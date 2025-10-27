@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'Views/home_screen.dart';
 import 'ViewModels/conversation_viewmodel.dart';
 import 'services/speech_to_text_service.dart';
 import 'services/openai_service.dart';
 import 'services/tts_service.dart';
 
-Future<void> main() async {
-  await dotenv.load(fileName: ".env");      // Load environment variables
+void main() {
   runApp(const OoinkApp());
 }
 
@@ -30,12 +28,8 @@ class OoinkApp extends StatelessWidget {
           ttsService: ttsService,
         );
 
-        // Load API key from environment
-        final apiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
-        if (apiKey.isEmpty) {
-          throw Exception('OPENAI_API_KEY not found in .env file');
-        }
-        viewModel.initialize(apiKey);
+        // Initialize services
+        viewModel.initialize();
 
         return viewModel;
       },

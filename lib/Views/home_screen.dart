@@ -120,7 +120,7 @@ class HomeScreen extends StatelessWidget {
     Color statusColor;
 
     if (viewModel.isIdle) {
-      statusText = 'Hi! Ask me about our menu!';
+      statusText = 'Hello! Welcome, Im your AI pig assistant';
       statusColor = Colors.pink;
     } else if (viewModel.isListening) {
       statusText = 'Listening... 👂';

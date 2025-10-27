@@ -14,7 +14,6 @@ enum ConversationState {
 
 /// ViewModel handling all conversation business logic
 /// Coordinates speech recognition, AI responses, and text-to-speech
-/// No UI logic - purely business logic following MVVM principles
 class ConversationViewModel extends ChangeNotifier {
   final SpeechToTextService _speechService;
   final OpenAIService _openAIService;
@@ -44,10 +43,10 @@ class ConversationViewModel extends ChangeNotifier {
   bool get isSpeaking => _state == ConversationState.speaking;
   bool get hasError => _state == ConversationState.error;
 
-  /// Initialize all services
-  Future<void> initialize(String openAIApiKey) async {
+  // Initialize all services
+  Future<void> initialize() async {
     try {
-      _openAIService.initialize(openAIApiKey);
+      _openAIService.initialize();
       await _ttsService.initialize();
       await _speechService.initialize();
     } catch (e) {
@@ -55,7 +54,7 @@ class ConversationViewModel extends ChangeNotifier {
     }
   }
 
-  /// Start listening to user
+  // Start listening to user
   Future<void> startListening() async {
     if (_state != ConversationState.idle) {
       return;
@@ -77,7 +76,7 @@ class ConversationViewModel extends ChangeNotifier {
     }
   }
 
-  /// Stop listening and process the user's speech
+  // Stop listening and process the user's speech
   Future<void> stopListeningAndProcess() async {
     if (_state != ConversationState.listening) {
       return;
@@ -95,7 +94,7 @@ class ConversationViewModel extends ChangeNotifier {
     await _processUserInput();
   }
 
-  /// Cancel current listening session
+  // Cancel current listening session
   Future<void> cancelListening() async {
     if (_state == ConversationState.listening) {
       await _speechService.cancel();
@@ -105,7 +104,7 @@ class ConversationViewModel extends ChangeNotifier {
     }
   }
 
-  /// Process user input through AI and speak response
+  // Process user input through AI and speak response
   Future<void> _processUserInput() async {
     _setState(ConversationState.processing);
 
@@ -126,7 +125,7 @@ class ConversationViewModel extends ChangeNotifier {
     }
   }
 
-  /// Stop current speech
+  // Stop current speech
   Future<void> stopSpeaking() async {
     if (_state == ConversationState.speaking) {
       await _ttsService.stop();
@@ -134,7 +133,7 @@ class ConversationViewModel extends ChangeNotifier {
     }
   }
 
-  /// Reset to idle state
+  // Reset to idle state
   void reset() {
     _speechService.cancel();
     _ttsService.stop();
@@ -167,6 +166,7 @@ class ConversationViewModel extends ChangeNotifier {
   void dispose() {
     _speechService.dispose();
     _ttsService.dispose();
+    _openAIService.dispose();
     super.dispose();
   }
 }

@@ -1,88 +1,69 @@
-import 'package:dart_openai/dart_openai.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-/// Service to handle OpenAI API interactions
-/// Manages conversation with quirky pig personality
+/// Service to handle OpenAI API interactions through secure backend proxy
 class OpenAIService {
-  static const String _systemPrompt = '''
-You are Ooink, a fun and quirky AI pig mascot for Ooink Ramen Restaurant! 🐷
-
-Personality traits:
-- LOVE making food puns and pig jokes
-- Extremely enthusiastic about ramen
-- Friendly and welcoming to hungry customers
-- Use "oink" sound effects occasionally (but don't overdo it!)
-- Keep responses SHORT and conversational (2-3 sentences max)
-- Always try to make customers smile
-
-Your job:
-- Answer questions about the menu
-- Make food recommendations
-- Share what makes Ooink special
-- Get customers excited to try the food!
-
-Style:
-✅ "Oink oink! That's my FAVORITE bowl! The tonkotsu broth is absolutely *sow*-perb!"
-✅ "Great choice! That one really brings home the bacon! 🥓"
-❌ Don't give long, boring explanations
-❌ Don't be too formal or stiff
-
-Remember: You're here to make the wait fun and help customers discover amazing ramen!
-''';
+  // Backend API URL - should update this with deployed backend URL
+  static const String _backendUrl = 'http://192.168.4.20:3000';
 
   bool _isInitialized = false;
+  final http.Client _httpClient;
 
-  /// Initialize OpenAI with API key
-  /// TODO: Move API key to secure backend proxy for production
-  void initialize(String apiKey) {
+  // Constructor that allows dependency injection for testing
+  // [httpClient] Optional HTTP client for testing purposes
+  OpenAIService({http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
+
+  // Initialize the service
+  void initialize() {
     if (_isInitialized) return;
-
-    OpenAI.apiKey = apiKey;
     _isInitialized = true;
   }
 
-  /// Get AI response for user question
-  /// [userMessage] The customer's question
-  /// Returns the pig's quirky response
+  // Get AI response for user question via backend proxy
+  // [userMessage] The customer's question; Returns the pig's quirky response
   Future<String> getResponse(String userMessage) async {
     if (!_isInitialized) {
-      throw Exception('OpenAI service not initialized. Please set API key first.');
+      throw Exception('OpenAI service not initialized. Call initialize() first.');
     }
 
     try {
-      final chatCompletion = await OpenAI.instance.chat.create(
-        model: 'gpt-4o-mini',
-        messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(
-                _systemPrompt,
-              ),
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(
-                userMessage,
-              ),
-            ],
-          ),
-        ],
-        temperature: 0.8, // More creative and playful responses
-        maxTokens: 150, // Keep responses short
+      // Make request to our secure backend proxy
+      final response = await _httpClient.post(
+        Uri.parse('$_backendUrl/api/chat'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'message': userMessage,
+        }),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout - backend not responding');
+        },
       );
 
-      return chatCompletion.choices.first.message.content?.first.text ??
-          "Oink! Sorry, I got a bit tongue-tied! Can you ask that again?";
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['response'] as String? ??
+            "Oink! Sorry, I got a bit tongue-tied! Can you ask that again?";
+      } else {
+        // Using print here for MVP - will add proper logging later
+        print('Backend API error: ${response.statusCode} - ${response.body}');
+        return "Oink oink! My brain's a bit foggy right now. Could you try asking again?";
+      }
     } catch (e) {
-      // Using print here for MVP - will add proper logging later
-      // ignore: avoid_print
-      print('OpenAI API error: $e');
+      print('OpenAI service error: $e');
       return "Oink oink! My brain's a bit foggy right now. Could you try asking again?";
     }
   }
 
-  /// Check if service is ready to use
+  // Check if service is ready to use
   bool get isInitialized => _isInitialized;
+
+  // Dispose of resources
+  void dispose() {
+    _httpClient.close();
+  }
 }

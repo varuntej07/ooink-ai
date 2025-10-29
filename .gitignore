@@ -17,6 +17,9 @@ migrate_working_dir/
 backend/.env
 backend/node_modules
 
+# Config with API keys (if hardcoded)
+lib/config/app_config.dart
+
 # IntelliJ related
 *.iml
 *.ipr

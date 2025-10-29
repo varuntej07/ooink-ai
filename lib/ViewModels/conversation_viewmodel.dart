@@ -13,12 +13,11 @@ enum ConversationState {
   listening, // Actively listening to user
   processing, // Sending to AI and waiting for response
   speaking, // Pig is speaking the response
-  error, // Something went wrong
+  error,
 }
 
-/// ViewModel handling all conversation business logic
-/// Coordinates speech recognition, AI responses, and text-to-speech
-/// Now includes session management with 90-second inactivity timer
+/// ViewModel for the conversation flow
+/// Coordinates speech recognition, AI responses, text-to-speech, and session management with 90-second inactivity timer
 class ConversationViewModel extends ChangeNotifier {
   final SpeechToTextService _speechService;
   final OpenAIService _openAIService;
@@ -70,23 +69,19 @@ class ConversationViewModel extends ChangeNotifier {
     }
   }
 
-  /// Starts or resets the 90-second inactivity timer
-  /// Called whenever there's user activity (new question)
+  /// Starts or resets the 90-second inactivity timer, called whenever there's user activity (new question)
   void _resetInactivityTimer() {
     _inactivityTimer?.cancel();
     _inactivityTimer = Timer(_sessionTimeout, _onSessionExpired);
   }
 
-  /// Called when the 90-second timer expires
-  /// Silently clears the session context without notifying the user
+  /// Called when the 90-second timer expires, silently clears the session context without notifying the user
   void _onSessionExpired() {
     Logger.session('Session expired after 90 seconds of inactivity');
     _sessionRepository.clearSession();
-    // No UI update - silent reset as per requirements
   }
 
-  /// Ensures a session exists, creates one if needed
-  /// This is called at the start of each conversation
+  /// Ensures a session exists, creates one if needed, this is called at the start of each conversation
   Future<void> _ensureSession() async {
     if (!_sessionRepository.hasActiveSession) {
       await _sessionRepository.startSession();
@@ -100,7 +95,7 @@ class ConversationViewModel extends ChangeNotifier {
       return;
     }
 
-    _setState(ConversationState.listening);
+    _updateState(ConversationState.listening);
     _userInput = '';
     _errorMessage = '';
 
@@ -126,7 +121,7 @@ class ConversationViewModel extends ChangeNotifier {
 
     if (_userInput.isEmpty) {
       _setError('No speech detected. Please try again!');
-      _setState(ConversationState.idle);
+      _updateState(ConversationState.idle);
       return;
     }
 
@@ -138,16 +133,15 @@ class ConversationViewModel extends ChangeNotifier {
   Future<void> cancelListening() async {
     if (_state == ConversationState.listening) {
       await _speechService.cancel();
-      _setState(ConversationState.idle);
+      _updateState(ConversationState.idle);
       _userInput = '';
       notifyListeners();
     }
   }
 
-  // Process user input through AI and speak response
-  // Now includes session management and conversation history
+  // Process user input through AI and speak response, includes session management and conversation history
   Future<void> _processUserInput() async {
-    _setState(ConversationState.processing);
+    _updateState(ConversationState.processing);
 
     try {
       // Ensure we have an active session
@@ -176,11 +170,11 @@ class ConversationViewModel extends ChangeNotifier {
       _resetInactivityTimer();
 
       // Speak the response
-      _setState(ConversationState.speaking);
+      _updateState(ConversationState.speaking);
       await _ttsService.speak(
         _aiResponse,
         onComplete: () {
-          _setState(ConversationState.idle);
+          _updateState(ConversationState.idle);
         },
       );
     } catch (e) {
@@ -188,28 +182,26 @@ class ConversationViewModel extends ChangeNotifier {
     }
   }
 
-  // Stop current speech
   Future<void> stopSpeaking() async {
     if (_state == ConversationState.speaking) {
       await _ttsService.stop();
-      _setState(ConversationState.idle);
+      _updateState(ConversationState.idle);
     }
   }
 
-  // Reset to idle state
-  // Now also clears the session
+  // Reset to idle state, also clearing the session
   void reset() {
     _speechService.cancel();
     _ttsService.stop();
     _inactivityTimer?.cancel();
     _sessionRepository.clearSession();
-    _setState(ConversationState.idle);
+    _updateState(ConversationState.idle);
     _userInput = '';
     _aiResponse = '';
     _errorMessage = '';
   }
 
-  void _setState(ConversationState newState) {
+  void _updateState(ConversationState newState) {
     _state = newState;
     notifyListeners();
   }
@@ -222,7 +214,7 @@ class ConversationViewModel extends ChangeNotifier {
     // Auto-recover from error after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (_state == ConversationState.error) {
-        _setState(ConversationState.idle);
+        _updateState(ConversationState.idle);
         _errorMessage = '';
       }
     });
@@ -230,15 +222,15 @@ class ConversationViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    _inactivityTimer?.cancel(); // Cancel timer before disposing
-    _sessionRepository.dispose(); // Clean up session repository
+    _inactivityTimer?.cancel();      // Cancel timer before disposing
+    _sessionRepository.dispose();   // Clean up session repository
     _speechService.dispose();
     _ttsService.dispose();
     _openAIService.dispose();
     super.dispose();
   }
 
-  // Additional getters for session info (useful for debugging)
+  // Additional getters for session info (handy for debugging)
   bool get hasActiveSession => _sessionRepository.hasActiveSession;
   int get messageCount => _sessionRepository.messageCount;
   String? get currentSessionId => _sessionRepository.currentSessionId;

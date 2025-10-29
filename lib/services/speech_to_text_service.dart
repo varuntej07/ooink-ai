@@ -10,7 +10,7 @@ class SpeechToTextService {
   Future<bool> initialize() async {
     if (_isInitialized) return true;
 
-    // Initialize speech recognition (package handles permissions internally)
+    // Initialize speech recognition
     _isInitialized = await _speechToText.initialize(
       onError: (error) => debugPrint('Speech recognition error: $error'),
       onStatus: (status) => debugPrint('Speech recognition status: $status'),

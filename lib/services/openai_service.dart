@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 /// Service to handle OpenAI API interactions through secure backend proxy
 class OpenAIService {
-  // Backend API URL - should update this with deployed backend URL
+  // Backend API URL - TODO: should update this with deployed backend URL
   static const String _backendUrl = 'http://192.168.4.20:3000';
 
   bool _isInitialized = false;
@@ -11,8 +11,7 @@ class OpenAIService {
 
   // Constructor that allows dependency injection for testing
   // [httpClient] Optional HTTP client for testing purposes
-  OpenAIService({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  OpenAIService({http.Client? httpClient}) : _httpClient = httpClient ?? http.Client();
 
   // Initialize the service
   void initialize() {
@@ -46,8 +45,7 @@ class OpenAIService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['response'] as String? ??
-            "Oink! Sorry, I got a bit tongue-tied! Can you ask that again?";
+        return data['response'] as String? ?? "Oink! Sorry, I got a bit tongue-tied! Can you ask that again?";
       } else {
         // Using print here for MVP - will add proper logging later
         print('Backend API error: ${response.statusCode} - ${response.body}');

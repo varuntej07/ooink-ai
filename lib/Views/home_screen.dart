@@ -147,8 +147,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(
-      BuildContext context, ConversationViewModel viewModel) {
+  Widget _buildActionButton(BuildContext context, ConversationViewModel viewModel) {
     String buttonText;
     VoidCallback? onPressed;
     Color buttonColor;
@@ -183,9 +182,7 @@ class HomeScreen extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: buttonColor,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(35),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(35)),
           elevation: 8,
         ),
         child: Text(

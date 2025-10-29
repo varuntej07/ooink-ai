@@ -14,16 +14,13 @@ import 'repositories/session_repository.dart';
 
 /// Main entry point - initializes environment variables and Firebase
 void main() async {
-  // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
 
   // Initialize Firebase with the auto-generated config
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const OoinkApp());
 }
@@ -41,11 +38,8 @@ class OoinkApp extends StatelessWidget {
         final ttsService = TTSService();
         final ragService = RAGService();
 
-        // Initialize Firebase-based services
         final firestoreService = FirestoreService();
-        final sessionRepository = SessionRepository(
-          firestoreService: firestoreService,
-        );
+        final sessionRepository = SessionRepository(firestoreService: firestoreService);
 
         // Create ViewModel with all services including session management
         final viewModel = ConversationViewModel(

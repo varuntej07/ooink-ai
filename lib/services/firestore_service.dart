@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/session_model.dart';
 import '../models/message_model.dart';
+import '../utils/logger.dart';
 
 /// Service for background Firestore operations (fire-and-forget)
 /// This runs async so it never blocks the main conversation flow
@@ -17,8 +18,8 @@ class FirestoreService {
           .doc(session.sessionId)
           .set(session.toJson());
     } catch (e) {
-      // Silent fail -We don't want Firestore errors to break the kiosk
-      print('Firestore createSession error (non-critical): $e');
+      // Silent fail - We don't want Firestore errors to break the kiosk
+      Logger.error('Firestore createSession error (non-critical)', e, e is Error ? e.stackTrace : null);
     }
   }
 
@@ -38,7 +39,7 @@ class FirestoreService {
         'lastActivityTime': message.timestamp.toIso8601String(),
       });
     } catch (e) {
-      print('Firestore addMessage error (non-critical): $e');
+      Logger.error('Firestore addMessage error (non-critical)', e, e is Error ? e.stackTrace : null);
     }
   }
 
@@ -49,7 +50,7 @@ class FirestoreService {
         'isActive': false,
       });
     } catch (e) {
-      print('Firestore endSession error (non-critical): $e');
+      Logger.error('Firestore endSession error (non-critical)', e, e is Error ? e.stackTrace : null);
     }
   }
 
@@ -68,7 +69,7 @@ class FirestoreService {
           .map((doc) => Message.fromJson(doc.data()))
           .toList();
     } catch (e) {
-      print('Firestore getSessionMessages error: $e');
+      Logger.error('Firestore getSessionMessages error', e, e is Error ? e.stackTrace : null);
       return [];
     }
   }
@@ -102,7 +103,7 @@ class FirestoreService {
             totalSessions > 0 ? totalMessages / totalSessions : 0,
       };
     } catch (e) {
-      print('Firestore getSessionAnalytics error: $e');
+      Logger.error('Firestore getSessionAnalytics error', e, e is Error ? e.stackTrace : null);
       return {
         'totalSessions': 0,
         'totalMessages': 0,

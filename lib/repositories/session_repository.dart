@@ -3,6 +3,7 @@ import '../models/conversation_context.dart';
 import '../models/message_model.dart';
 import '../models/session_model.dart';
 import '../services/firestore_service.dart';
+import '../utils/logger.dart';
 
 /// Repository for managing conversation sessions
 /// Uses hybrid storage: in-memory for speed + async Firestore for analytics
@@ -51,7 +52,7 @@ class SessionRepository {
     // We don't await this so it doesn't slow down the conversation
     final session = Session.create(sessionId);
     _firestoreService.createSession(session).catchError((error) {
-      print('Failed to log session to Firestore (non-critical): $error');
+      Logger.error('Failed to log session to Firestore (non-critical)', error, error is Error ? error.stackTrace : null);
     });
   }
 
@@ -70,7 +71,7 @@ class SessionRepository {
     _firestoreService
         .addMessage(_currentContext!.sessionId, message)
         .catchError((error) {
-      print('Failed to log user message to Firestore (non-critical): $error');
+      Logger.error('Failed to log user message to Firestore (non-critical)', error, error is Error ? error.stackTrace : null);
     });
   }
 
@@ -89,8 +90,7 @@ class SessionRepository {
     _firestoreService
         .addMessage(_currentContext!.sessionId, message)
         .catchError((error) {
-      print(
-          'Failed to log assistant message to Firestore (non-critical): $error');
+      Logger.error('Failed to log assistant message to Firestore (non-critical)', error, error is Error ? error.stackTrace : null);
     });
   }
 
@@ -127,7 +127,7 @@ class SessionRepository {
 
     // Mark session as ended in Firestore asynchronously
     _firestoreService.endSession(sessionId).catchError((error) {
-      print('Failed to end session in Firestore (non-critical): $error');
+      Logger.error('Failed to end session in Firestore (non-critical)', error, error is Error ? error.stackTrace : null);
     });
   }
 

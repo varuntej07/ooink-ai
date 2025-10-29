@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
-import '../ViewModels/conversation_viewmodel.dart';
+import '../ViewModels/conversation_vm.dart';
 
 /// Home screen view for Ooink AI kiosk
 /// Displays dancing pig animation and conversation interface

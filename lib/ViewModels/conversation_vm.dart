@@ -64,7 +64,8 @@ class ConversationViewModel extends ChangeNotifier {
       await _ttsService.initialize();
       await _speechService.initialize();
       await _ragService.initialize(); // Initialize RAG service with embeddings
-    } catch (e) {
+    } catch (e, stackTrace) {
+      Logger.error('Failed to initialize services', e, stackTrace);
       _setError('Failed to initialize: $e');
     }
   }
@@ -106,7 +107,8 @@ class ConversationViewModel extends ChangeNotifier {
           notifyListeners();
         },
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      Logger.error('Failed to start speech recognition', e, stackTrace);
       _setError('Failed to start listening: $e');
     }
   }
@@ -177,7 +179,8 @@ class ConversationViewModel extends ChangeNotifier {
           _updateState(ConversationState.idle);
         },
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      Logger.error('Failed to process user input and get AI response', e, stackTrace);
       _setError('Failed to process: $e');
     }
   }

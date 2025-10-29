@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
+import '../utils/logger.dart';
 
 /// Service for Retrieval-Augmented Generation (RAG)
 /// This loads the menu embeddings, performs semantic search, and calls OpenAI with relevant context
@@ -17,7 +18,8 @@ class RAGService {
       final String jsonString = await rootBundle.loadString('assets/ooink_embeddings.json');
       _embeddingsData = json.decode(jsonString);
       _isInitialized = true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      Logger.error('Failed to initialize RAG service', e, stackTrace);
       throw Exception('Failed to initialize RAG service: $e');
     }
   }
@@ -156,7 +158,7 @@ class RAGService {
         throw Exception('OpenAI API error: ${response.statusCode} ${response.body}');
       }
     } catch (e) {
-      print('Error getting AI response: $e');
+      Logger.error('Error getting AI response', e, e is Error ? e.stackTrace : null);
       // Return friendly error message instead of crashing
       return "Sorry, I'm having trouble connecting right now. Please try again!";
     }

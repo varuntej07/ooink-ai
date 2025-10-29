@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../utils/logger.dart';
 
 /// Service to handle OpenAI API interactions through secure backend proxy
 class OpenAIService {
@@ -47,12 +48,11 @@ class OpenAIService {
         final data = jsonDecode(response.body);
         return data['response'] as String? ?? "Oink! Sorry, I got a bit tongue-tied! Can you ask that again?";
       } else {
-        // Using print here for MVP - will add proper logging later
-        print('Backend API error: ${response.statusCode} - ${response.body}');
+        Logger.error('Backend API error: ${response.statusCode}', Exception(response.body));
         return "Oink oink! My brain's a bit foggy right now. Could you try asking again?";
       }
     } catch (e) {
-      print('OpenAI service error: $e');
+      Logger.error('OpenAI service error', e, e is Error ? e.stackTrace : null);
       return "Oink oink! My brain's a bit foggy right now. Could you try asking again?";
     }
   }

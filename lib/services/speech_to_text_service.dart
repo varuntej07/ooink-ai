@@ -1,5 +1,5 @@
 import 'package:speech_to_text/speech_to_text.dart';
-import 'package:flutter/foundation.dart';
+import '../utils/logger.dart';
 
 /// Service to handle speech recognition, Wraps the speech_to_text package
 class SpeechToTextService {
@@ -12,8 +12,8 @@ class SpeechToTextService {
 
     // Initialize speech recognition
     _isInitialized = await _speechToText.initialize(
-      onError: (error) => debugPrint('Speech recognition error: $error'),
-      onStatus: (status) => debugPrint('Speech recognition status: $status'),
+      onError: (error) => Logger.error('Speech recognition error', error),
+      onStatus: (status) => Logger.log('Speech recognition status: $status'),
     );
 
     return _isInitialized;

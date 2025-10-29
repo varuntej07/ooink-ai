@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'Views/home_screen.dart';
-import 'ViewModels/conversation_viewmodel.dart';
+import 'ViewModels/conversation_vm.dart';
 import 'services/speech_to_text_service.dart';
 import 'services/openai_service.dart';
 import 'services/tts_service.dart';
@@ -12,7 +13,7 @@ import 'services/rag_service.dart';
 import 'services/firestore_service.dart';
 import 'repositories/session_repository.dart';
 
-/// Main entry point - initializes environment variables and Firebase
+/// Main entry point - initializes environment variables, Firebase, and Crashlytics
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -21,6 +22,9 @@ void main() async {
 
   // Initialize Firebase with the auto-generated config
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize Firebase Crashlytics for error logging and monitoring
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
   runApp(const OoinkApp());
 }

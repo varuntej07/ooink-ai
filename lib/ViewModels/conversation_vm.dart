@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../services/speech_to_text_service.dart';
-import '../services/openai_service.dart';
 import '../services/tts_service.dart';
 import '../services/rag_service.dart';
 import '../repositories/session_repository.dart';
@@ -20,7 +19,6 @@ enum ConversationState {
 /// Coordinates speech recognition, AI responses, text-to-speech, and session management with 90-second inactivity timer
 class ConversationViewModel extends ChangeNotifier {
   final SpeechToTextService _speechService;
-  final OpenAIService _openAIService;
   final TTSService _ttsService;
   final RAGService _ragService;
   final SessionRepository _sessionRepository;
@@ -36,12 +34,10 @@ class ConversationViewModel extends ChangeNotifier {
 
   ConversationViewModel({
     required SpeechToTextService speechService,
-    required OpenAIService openAIService,
     required TTSService ttsService,
     required RAGService ragService,
     required SessionRepository sessionRepository,
   })  : _speechService = speechService,
-        _openAIService = openAIService,
         _ttsService = ttsService,
         _ragService = ragService,
         _sessionRepository = sessionRepository;
@@ -60,7 +56,6 @@ class ConversationViewModel extends ChangeNotifier {
   // Initialize all services including RAG
   Future<void> initialize() async {
     try {
-      _openAIService.initialize();
       await _ttsService.initialize();
       await _speechService.initialize();
       await _ragService.initialize(); // Initialize RAG service with embeddings
@@ -229,7 +224,6 @@ class ConversationViewModel extends ChangeNotifier {
     _sessionRepository.dispose();   // Clean up session repository
     _speechService.dispose();
     _ttsService.dispose();
-    _openAIService.dispose();
     super.dispose();
   }
 

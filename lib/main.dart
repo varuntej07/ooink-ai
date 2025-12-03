@@ -7,7 +7,6 @@ import 'firebase_options.dart';
 import 'Views/home_screen.dart';
 import 'ViewModels/conversation_vm.dart';
 import 'services/speech_to_text_service.dart';
-import 'services/openai_service.dart';
 import 'services/tts_service.dart';
 import 'services/rag_service.dart';
 import 'services/firestore_service.dart';
@@ -38,7 +37,6 @@ class OoinkApp extends StatelessWidget {
       create: (_) {
         // Initialize all services
         final speechService = SpeechToTextService();
-        final openAIService = OpenAIService();
         final ttsService = TTSService();
         final ragService = RAGService();
 
@@ -48,7 +46,6 @@ class OoinkApp extends StatelessWidget {
         // Create ViewModel with all services including session management
         final viewModel = ConversationViewModel(
           speechService: speechService,
-          openAIService: openAIService,
           ttsService: ttsService,
           ragService: ragService,
           sessionRepository: sessionRepository,

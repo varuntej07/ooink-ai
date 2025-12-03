@@ -37,7 +37,7 @@ dependencies:
   provider:
   cloud_firestore:
   firebase_core:
-  dart_openai:
+  firebase_ai:
   flutter_tts:
   lottie:
   kiosk_mode:

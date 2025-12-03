@@ -1,22 +1,29 @@
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:http/http.dart' as http;
+import 'package:ooink/services/vertex_ai_service.dart';
 import '../config/app_config.dart';
 import '../utils/logger.dart';
 
-/// Service for Retrieval-Augmented Generation (RAG)
-/// This loads the menu embeddings, performs semantic search, and calls OpenAI with relevant context
+/// Service for Retrieval-Augmented Generation (RAG) using Firebase Vertex AI
+/// Loads menu knowledge base, performs keyword-based search, and calls Gemini AI with relevant context
+/// Uses simple keyword matching instead of embeddings for efficient, lightweight menu search
 class RAGService {
-  Map<String, dynamic>? _embeddingsData;      // Loaded embeddings data
+  Map<String, dynamic>? _menuData; // Loaded menu knowledge base
+  final VertexAIService _vertexAIService = VertexAIService();
   bool _isInitialized = false;
 
-  // Initializes the RAG service by loading embeddings from assets, called once during app startup
+  /// Initializes the RAG service by loading menu kb from assets and initializing Vertex AI
+  /// Called once during app startup in ConversationViewModel
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
-      final String jsonString = await rootBundle.loadString('assets/ooink_embeddings.json');
-      _embeddingsData = json.decode(jsonString);
+      // Load menu kb (JSON format with structured menu data)
+      final String jsonString = await rootBundle.loadString('assets/menu_knowledge_base_json.txt');
+      _menuData = json.decode(jsonString);
+
+      _vertexAIService.initialize();
+
       _isInitialized = true;
     } catch (e, stackTrace) {
       Logger.error('Failed to initialize RAG service', e, stackTrace);
@@ -24,71 +31,87 @@ class RAGService {
     }
   }
 
-  // Ensures the service is initialized before use
   void _ensureInitialized() {
-    if (!_isInitialized || _embeddingsData == null) {
+    if (!_isInitialized || _menuData == null) {
       throw Exception('RAG service not initialized. Call initialize() first.');
     }
   }
 
-  /// Performs semantic search to find relevant menu information
-  /// Returns the top N most relevant text chunks based on keyword matching
-  Future<List<String>> _semanticSearch(String query) async {
+  /// Performs keyword-based search to find relevant menu information
+  /// Returns concatenated relevant sections from menu categories, items, and FAQs
+  String _findRelevantContext(String query) {
     final topK = AppConfig.topKChunks;
     _ensureInitialized();
 
-    // For this implementation, using keyword matching instead of embeddings
-
-    final chunks = _embeddingsData!['chunks'] as List<dynamic>;
     final queryLower = query.toLowerCase();
+    final relevantSections = <String>[];
 
-    // Score chunks based on keyword overlap
-    final scoredChunks = <Map<String, dynamic>>[];
-
-    for (var chunk in chunks) {
-      final text = (chunk['text'] as String).toLowerCase();
-
-      // Calculate simple relevance score based on keyword presence
-      double score = 0.0;
-
-      // Split query into words
-      final queryWords = queryLower.split(RegExp(r'\W+'));
-      for (var word in queryWords) {
-        if (word.length > 2 && text.contains(word)) {
-          score += 1.0;
+    try {
+      // Search restaurant info for general questions
+      if (_menuData!.containsKey('restaurant_info')) {
+        final restaurantInfo = _menuData!['restaurant_info'];
+        final infoText = json.encode(restaurantInfo).toLowerCase();
+        if (_containsKeywords(infoText, queryLower)) {
+          relevantSections.add(
+            'Restaurant: ${restaurantInfo['name']} - ${restaurantInfo['cuisine_type']}. '
+            '${restaurantInfo['philosophy']}'
+          );
         }
       }
 
-      if (score > 0) {
-        scoredChunks.add({
-          'text': chunk['text'],
-          'score': score,
-        });
+      // Search menu categories and items
+      if (_menuData!.containsKey('menu_categories')) {
+        final categories = _menuData!['menu_categories'] as List;
+        for (var category in categories) {
+          final items = category['items'] as List? ?? [];
+          for (var item in items) {
+            final itemText = json.encode(item).toLowerCase();
+            if (_containsKeywords(itemText, queryLower)) {
+              final description = item['description'] ?? '';
+              final price = item['price'] ?? '';
+              final name = item['name'] ?? '';
+              relevantSections.add('$name: $description ($price)');
+            }
+          }
+        }
       }
+
+      // Search common customer questions/FAQs
+      if (_menuData!.containsKey('common_customer_questions')) {
+        final questions = _menuData!['common_customer_questions'] as List;
+        for (var qa in questions) {
+          final qaText = '${qa['question']} ${qa['answer']}'.toLowerCase();
+          if (_containsKeywords(qaText, queryLower)) {
+            relevantSections.add('Q: ${qa['question']}\nA: ${qa['answer']}');
+          }
+        }
+      }
+
+      // Return top K most relevant sections, or general fallback if no matches
+      if (relevantSections.isEmpty) {
+        return 'General menu information available. Ask about our ramen, appetizers, or restaurant details.';
+      }
+
+      return relevantSections.take(topK).join('\n\n');
+    } catch (e) {
+      Logger.error('Error finding relevant context', e, null);
+      return 'Menu information available.';
     }
-
-    // Sort by score descending
-    scoredChunks.sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
-
-    // Return top K results
-    final results = scoredChunks
-        .take(topK)
-        .map((chunk) => chunk['text'] as String)
-        .toList();
-
-    // If no keyword matches, return first few chunks as fallback
-    if (results.isEmpty) {
-      return chunks
-          .take(topK)
-          .map((chunk) => chunk['text'] as String)
-          .toList();
-    }
-
-    return results;
   }
 
-  /// Gets a response from OpenAI with conversation history and relevant context
-  /// This is the main method that orchestrates the RAG pipeline
+  /// Helper method to check if text contains any keywords from the query
+  /// Splits query into words and checks for presence in the text (ignores short words < 3 chars)
+  bool _containsKeywords(String text, String query) {
+    final queryWords = query.split(RegExp(r'\W+')).where((w) => w.length > 2);
+    return queryWords.any((word) => text.contains(word));
+  }
+
+  /// Gets a response from Vertex AI Gemini with conversation history and relevant menu context
+  /// This is the main method that orchestrates the RAG pipeline:
+  /// 1. Find relevant menu context using keyword matching
+  /// 2. Build prompt with system instructions + context + conversation history
+  /// 3. Call Firebase Vertex AI Gemini model
+  /// 4. Return AI response
   Future<String> getResponse(
     String userMessage, {
     List<Map<String, dynamic>>? conversationHistory,
@@ -96,70 +119,45 @@ class RAGService {
     _ensureInitialized();
 
     try {
-      // Step 1: Perform semantic search to find relevant menu context
-      final relevantChunks = await _semanticSearch(userMessage);
+      // Step 1: Find relevant menu context using keyword-based search
+      final relevantContext = _findRelevantContext(userMessage);
 
-      // Step 2: Build context string from relevant chunks
-      final contextString = relevantChunks.join('\n\n');
+      // Step 2: Build the full prompt with system instructions and context
+      final StringBuffer prompt = StringBuffer();
 
-      // Step 3: Build messages array for OpenAI
-      final messages = <Map<String, dynamic>>[];
+      // Add system persona and instructions
+      prompt.writeln('You are Pig, the friendly AI assistant at Ooink Ramen Restaurant.');
+      prompt.writeln('Answer customer questions about the menu using ONLY the context provided below.');
+      prompt.writeln('Be warm, enthusiastic about the food, and keep responses concise (2-3 sentences max).');
+      prompt.writeln('If asked about something not in the context, politely say you don\'t have that info with a friendly tone.\n');
 
-      // Add system message with context
-      messages.add({
-        'role': 'system',
-        'content': 'You are Pig, the friendly AI assistant at Ooink Ramen Restaurant.'
-            'Answer customer questions about the menu using ONLY the context provided below.'
-            'Be warm, enthusiastic about the food, and keep responses concise (2-3 sentences max).'
-            'If asked about something not in the context, politely say you don\'t have that info with a joke.\n\n'
-            'MENU CONTEXT:\n$contextString',
-      });
+      // Add relevant menu context
+      prompt.writeln('MENU CONTEXT:');
+      prompt.writeln(relevantContext);
+      prompt.writeln();
 
-      // Add conversation history (if any)
+      // Add conversation history (for follow-up questions like "Is it spicy?") with limit to last 5 messages
       if (conversationHistory != null && conversationHistory.isNotEmpty) {
-        // Skip system messages from history (we already added our own)
-        final historyWithoutSystem = conversationHistory
-            .where((msg) => msg['role'] != 'system')
-            .toList();
-        messages.addAll(historyWithoutSystem);
+        final limitedHistory = conversationHistory.length > 5
+            ? conversationHistory.sublist(conversationHistory.length - 5)
+            : conversationHistory;
+
+        final historyWithoutSystem =
+            limitedHistory.where((msg) => msg['role'] != 'system').toList();
+        for (var message in historyWithoutSystem) {
+          prompt.writeln('${message['role']}: ${message['content']}');
+        }
       }
 
       // Add current user message
-      messages.add({
-        'role': 'user',
-        'content': userMessage,
-      });
+      prompt.writeln('user: $userMessage');
 
-      // Limit context window to avoid token limits (keep last 10 messages + system)
-      final limitedMessages = messages.length > 5
-          ? [messages.first, ...messages.sublist(messages.length - 5)]
-          : messages;
+      // Step 3: Call Firebase Vertex AI Gemini model
+      final aiResponse = await _vertexAIService.generateContent(prompt.toString());
 
-      // Step 4: Call OpenAI API
-      final response = await http.post(
-        Uri.parse(AppConfig.openAIEndpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${AppConfig.openAIApiKey}',
-        },
-        body: json.encode({
-          'model': AppConfig.openAIModel,
-          'messages': limitedMessages,
-          'temperature': AppConfig.openAITemperature,
-          'max_tokens': AppConfig.openAIMaxTokens,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final aiResponse = data['choices'][0]['message']['content'] as String;
-        return aiResponse.trim();
-      } else {
-        throw Exception('OpenAI API error: ${response.statusCode} ${response.body}');
-      }
+      return aiResponse.trim();
     } catch (e) {
       Logger.error('Error getting AI response', e, e is Error ? e.stackTrace : null);
-      // Return friendly error message instead of crashing
       return "Sorry, I'm having trouble connecting right now. Please try again!";
     }
   }
@@ -167,9 +165,13 @@ class RAGService {
   /// Checks if the service is ready to use
   bool get isInitialized => _isInitialized;
 
-  /// Gets the number of chunks loaded
-  int get chunkCount {
-    if (!_isInitialized || _embeddingsData == null) return 0;
-    return (_embeddingsData!['chunks'] as List).length;
+  /// Gets information about loaded menu data for debugging purposes
+  String get menuInfo {
+    if (!_isInitialized || _menuData == null) return 'Not initialized';
+
+    final categories = _menuData!['menu_categories'] as List? ?? [];
+    final questions = _menuData!['common_customer_questions'] as List? ?? [];
+
+    return 'Menu loaded: ${categories.length} categories, ${questions.length} FAQs';
   }
 }

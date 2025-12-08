@@ -1,0 +1,76 @@
+workflows:
+  ios-release:
+    name: iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        # TODO: credentials group here after setting up in Codemagic UI
+        - app_store_credentials
+      vars:
+        BUNDLE_ID: "com.ooinkramen.ooink"
+        APP_STORE_APP_ID: YOUR_APP_STORE_ID # from App Store Connect
+        GOOGLE_SERVICES_IOS: Encrypted(...) # Add this in Codemagic UI
+    scripts:
+      - name: Set up Firebase configuration
+        script: |
+          echo $GOOGLE_SERVICES_IOS | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      - name: Flutter analyze
+        script: |
+          flutter analyze
+      - name: Build ipa for distribution
+        script: |
+          flutter build ipa --release \
+            --build-name=1.0.0 \
+            --build-number=$(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID") + 1)) \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      # Email notifications configured in Codemagic UI
+      app_store_connect:
+        auth: integration
+        # Submit to App Store
+        submit_to_app_store: false # Set to true after first successful build
+        # Submit to TestFlight
+        submit_to_testflight: true
+        # Automatically release to testers
+        beta_review_enabled: false
+
+  android-release:
+    name: Android Release
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+      groups:
+        - google_play_credentials
+      vars:
+        GOOGLE_SERVICES_ANDROID: Encrypted(...)
+    scripts:
+      - name: Set up Firebase configuration
+        script: |
+          echo $GOOGLE_SERVICES_ANDROID | base64 --decode > $CM_BUILD_DIR/android/app/google-services.json
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      - name: Build Android app bundle
+        script: |
+          flutter build appbundle --release
+    artifacts:
+      - build/app/outputs/bundle/release/app-release.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal

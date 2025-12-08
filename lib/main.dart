@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'Views/home_screen.dart';
 import 'ViewModels/conversation_vm.dart';
@@ -15,9 +14,6 @@ import 'repositories/session_repository.dart';
 /// Main entry point - initializes environment variables, Firebase, and Crashlytics
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Load environment variables from .env file
-  await dotenv.load(fileName: ".env");
 
   // Initialize Firebase with the auto-generated config
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

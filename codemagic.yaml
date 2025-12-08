@@ -11,6 +11,10 @@ workflows:
       - name: Get Flutter packages
         script: |
           flutter pub get
+      - name: Set iOS deployment target
+        script: |
+          find . -name "Podfile" -exec sed -i '' "s/^# platform :ios, '.*'/platform :ios, '13.0'/" {} \;
+          find . -name "Podfile" -exec sed -i '' "s/^platform :ios, '.*'/platform :ios, '13.0'/" {} \;
       - name: Install CocoaPods dependencies
         script: |
           cd ios && pod install

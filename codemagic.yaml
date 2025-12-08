@@ -1,23 +1,21 @@
 workflows:
-  # ios-release:
-  #   ...
-
-  android-release:
-    name: Android Release
+  ios-release:
+    name: iOS Release
     max_build_duration: 60
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     environment:
       flutter: stable
-      # groups:
-      #   - google_play_credentials
-      vars:
-        PACKAGE_NAME: "com.ooinkramen.ooink"
+      xcode: latest
+      cocoapods: default
     scripts:
       - name: Get Flutter packages
         script: |
-          flutter packages pub get
-      - name: Build Android app bundle
+          flutter pub get
+      - name: Install CocoaPods dependencies
         script: |
-          flutter build appbundle --release
+          cd ios && pod install
+      - name: Build iOS app
+        script: |
+          flutter build ipa --release
     artifacts:
-      - build/app/outputs/bundle/release/app-release.aab
+      - build/ios/ipa/*.ipa

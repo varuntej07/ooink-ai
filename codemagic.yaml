@@ -6,9 +6,8 @@ workflows:
     integrations:
       app_store_connect: codemagic    # API key name in App Store Connect and codemagic env
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.ooinkramen.ai
+      groups:
+        - certificate_credentials     # defined in codemagic' env
       flutter: stable
       xcode: latest
       cocoapods: default

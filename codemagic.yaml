@@ -3,10 +3,19 @@ workflows:
     name: iOS Release
     max_build_duration: 60
     instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic    # API key name in App Store Connect and codemagic env
     environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ooinkramen.ai
       flutter: stable
       xcode: latest
       cocoapods: default
+      vars:
+        BUNDLE_ID: "com.ooinkramen.ai"
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
     scripts:
       - name: Get Flutter packages
         script: |
@@ -20,6 +29,16 @@ workflows:
           cd ios && pod install
       - name: Build iOS app
         script: |
-          flutter build ipa --release
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - App Store Connect Users
+        submit_to_app_store: false

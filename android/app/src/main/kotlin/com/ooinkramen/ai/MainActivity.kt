@@ -1,4 +1,4 @@
-package com.ooinkramen.ooink
+package com.ooinkramen.ai
 
 import io.flutter.embedding.android.FlutterActivity
 

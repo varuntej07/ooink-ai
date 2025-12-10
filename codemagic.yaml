@@ -11,10 +11,6 @@ workflows:
         # These credentials allow 'app-store-connect fetch-signing-files' to authenticate
         # Must contain: APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_PRIVATE_KEY
         - appstore_credentials
-      ios_signing:
-        # Automatic code signing configuration - tells Codemagic to fetch App Store profiles
-        distribution_type: app_store
-        bundle_identifier: com.ooinkramen.ai
       flutter: stable
       xcode: latest
       cocoapods: default

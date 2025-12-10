@@ -6,8 +6,9 @@ workflows:
     integrations:
       app_store_connect: codemagic    # API key name in App Store Connect and codemagic env
     environment:
-      groups:
-        - certificate_credentials     # defined in codemagic' env
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ooinkramen.ai
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -16,17 +17,6 @@ workflows:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
     scripts:
-      - name: Set up keychain to be used for code signing
-        script: |
-          keychain initialize
-      - name: Fetch signing files from App Store Connect
-        script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
-      - name: Add certificates to keychain
-        script: |
-          keychain add-certificates
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
@@ -42,7 +32,8 @@ workflows:
           cd ios && pod install
       - name: Build iOS app
         script: |
-          flutter build ipa --release
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
     publishing:

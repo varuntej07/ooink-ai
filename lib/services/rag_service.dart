@@ -18,15 +18,24 @@ class RAGService {
     if (_isInitialized) return;
 
     try {
+      Logger.log('RAG service: Starting initialization...');
+
       // Load menu kb (JSON format with structured menu data)
+      Logger.log('RAG service: Loading menu knowledge base from assets...');
       final String jsonString = await rootBundle.loadString('assets/menu_knowledge_base_json.txt');
+
+      Logger.log('RAG service: Parsing menu data (${jsonString.length} bytes)...');
       _menuData = json.decode(jsonString);
 
+      Logger.log('RAG service: Initializing Vertex AI service...');
       _vertexAIService.initialize();
 
       _isInitialized = true;
+      Logger.log('RAG service: Initialization complete! ${menuInfo}');
     } catch (e, stackTrace) {
       Logger.error('Failed to initialize RAG service', e, stackTrace);
+      _isInitialized = false;
+      _menuData = null;
       throw Exception('Failed to initialize RAG service: $e');
     }
   }

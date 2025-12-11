@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow full access to sessions collection
+    // This is a single-device kiosk with no sensitive data
+    match /sessions/{sessionId} {
+      // Allow anyone to read/write session documents
+      allow read, write: if true;
+
+      // Allow access to messages subcollection
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Deny access to any other collections (for safety)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

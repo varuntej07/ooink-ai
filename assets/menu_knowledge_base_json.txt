@@ -1,0 +1,785 @@
+{
+  "restaurant_info": {
+    "name": "Ooink",
+    "owner": "Chef Chong Boon Ooi and Jiaxin Wang",
+    "owner_background": "Chef Ooi brings Malaysian culinary roots reflected in signature dishes like Ayam Goreng. He and Jiaxin are passionate about fresh ingredients and zero waste philosophy.",
+    "cuisine_type": "Japanese-Chinese Fusion Ramen",
+    "specialties": [
+      "Nontraditional Japanese-style ramen",
+      "Mala-forward flavors (Sichuan spicy and numbing)",
+      "Fresh daily-made noodles from scratch",
+      "Malaysian-inspired fried chicken",
+      "Rich kotteri (thick broth) ramen"
+    ],
+    "dining_style": "Casual ramen shop with self-service kiosk ordering",
+    "philosophy": "Respect the ingredients. All fresh ingredients sourced daily. Zero-waste approach - free extra noodles available by the register.",
+    "brand_story": "Named 'Ooink' with a pig logo. The restaurant celebrates bold fusion flavors that break traditional ramen conventions. Started in Capitol Hill in 2016 above a QFC store, expanded to Fremont in 2022.",
+    "locations": [
+      {
+        "location_name": "Capitol Hill (Original Location)",
+        "address": "1416 Harvard Ave, Seattle, WA 98122",
+        "phone": "(206) 568-7669",
+        "zip_code": "98122",
+        "neighborhood": "Capitol Hill / First Hill",
+        "landmark": "Above QFC store at Broadway and East Pike Street intersection",
+        "hours": {
+          "sunday_thursday": "11:30 AM - 9:00 PM",
+          "friday_saturday": "11:30 AM - 11:00 PM"
+        },
+        "opened": "2016",
+        "description": "Original location, tiny and cozy space above QFC. Intimate dining experience in a neighborhood packed with restaurants.",
+        "capacity": "Small, parties of 3+ may need to split up during peak hours",
+        "parking": "On-street parking available",
+        "seating": "Limited counter and table seating, bar near kitchen",
+        "atmosphere": "Quiet, fast-paced, intimate",
+        "notes": "Great for solo diners and couples. Larger groups should arrive early or call ahead."
+      },
+      {
+        "location_name": "Fremont",
+        "address": "3630 Stone Way N, Seattle, WA 98103",
+        "phone": "(206) 588-2035",
+        "zip_code": "98103",
+        "neighborhood": "Fremont / Wallingford",
+        "hours": {
+          "sunday_thursday": "5:00 PM - 9:30 PM",
+          "friday_saturday": "5:00 PM - 11:00 PM"
+        },
+        "opened": "2022",
+        "description": "Second location in Fremont neighborhood. Larger space with patio, more group-friendly than Capitol Hill. Features tablet-based ordering kiosk.",
+        "capacity": "Moderately larger than Capitol Hill, accommodates groups better",
+        "parking": "Street parking available but can be challenging during peak hours. No dedicated lot. Plan 10-20 minutes to find parking on busy evenings.",
+        "seating_options": [
+          "Table seating throughout main space",
+          "Bar seating near kitchen",
+          "Outdoor patio area"
+        ],
+        "atmosphere": "Buzzy, upbeat, more social than Capitol Hill. Small, cozy but with more breathing room.",
+        "accessibility": "Nut allergy friendly. Check with staff about other allergies and cross-contamination.",
+        "amenities": [
+          "Self-service kiosk ordering with tablet interface",
+          "Outdoor patio seating",
+          "WiFi not available",
+          "Full bar",
+          "Mobile payment (Samsung Pay, Apple Pay accepted)",
+          "One restroom facility",
+          "High chair for kids",
+          "Wheelchair accessible",
+          "Bussing bowls after eating"
+        ],
+        "notes": "Dinner-only location. Easier for groups than Capitol Hill. Can get crowded 5:30-8:30 PM. Best to arrive after 6:30 PM on weekends to avoid wait for seating."
+      }
+    ],
+    "awards_recognition": [
+      "Eater Seattle 2025: Featured in best restaurants on Capitol Hill",
+      "Seattle Magazine 2022: Included in Seattle's 100 best restaurants",
+      "Seattle Weekly 2018: Listed in '9 Best Soups for Surviving Winter in Seattle'",
+      "Seattle Magazine 2018: Featured in five best new ramen restaurants",
+      "Average rating: 4.3-4.7 stars across multiple platforms"
+    ]
+  },
+
+  "ordering_and_service": {
+    "fremont_location": {
+      "service_model": "Self-service kiosk ordering and seating",
+      "ordering_process": "Walk in, add name to waitlist if needed, order at digital kiosk when table available, pay at kiosk, seat yourself",
+      "payment_methods": [
+        "Credit cards",
+        "Samsung Pay",
+        "Apple Pay"
+      ],
+      "service_charge": "Service charge included in final bill - transparent pricing, no additional tip line",
+      "tip_policy": "Service charge included. Additional tipping with cash available if desired.",
+      "pricing_notes": "Expect $25-50 per person for full meal. Ramen $17-20+, appetizers $8-12."
+    },
+    "delivery_and_takeout": {
+      "available": true,
+      "online_ordering": "Available through ooinkramen.com and delivery apps",
+      "delivery_apps": [
+        "DoorDash",
+        "Uber Eats"
+      ],
+      "pickup_service": "Available - order online to pick up",
+      "fremont_hours": "Dine-in and takeout: Sun-Thu 5:00 PM-9:30 PM, Fri-Sat 5:00 PM-11:00 PM",
+      "online_store": "Can order packaged ramen kits and Mala chili oil from shopooink.com for nationwide shipping"
+    },
+    "wait_times": {
+      "typical_food_prep": "5-10 minutes for hot ramen after ordering",
+      "peak_hours": {
+        "fremont": "5:30 PM - 8:30 PM on weekends",
+        "typical_seating_wait": "10-30 minutes on Friday/Saturday evenings during peak",
+        "recommendation": "Arrive after 6:30 PM on busy weekends or call ahead"
+      },
+      "off_peak": "Shorter wait for both seating and food prep on weeknights, especially Sun-Thu"
+    }
+  },
+
+  "menu_categories": [
+    {
+      "category": "Signature Ramen Bowls",
+      "description": "Ooink's mala-forward ramen features fresh daily-made noodles in rich, complex broths. All ramen comes with soup, noodles, char siu (roast pork), bamboo shoots, aji-tamago (marinated soft-boiled egg), and scallion. Most feature Ooink's signature mala (spicy, numbing) flavor profile.",
+      "base_price_range": "$17-20+",
+      "preparation_time": "10-15 minutes",
+      "noodle_notes": "Thin, bouncy, chewy noodles made fresh daily. Perfect texture for soaking up rich broths.",
+      "items": [
+        {
+          "id": "ramen_001",
+          "name": "Mala Kotteri Ramen",
+          "price": "$20",
+          "signature": true,
+          "is_bestseller": true,
+          "description": "Ooink's most iconic dish. Rich, creamy, silky pork broth with intense garlic flavor, mala spice (Sichuan numbing and spicy sensation), topped with char siu, bamboo shoots, aji-tamago, scallion, black garlic oil, and crispy garlic chips. The kotteri (thick-style) broth clings perfectly to the fresh thin noodles.",
+          "flavor_profile": "Savory, garlicky, mala spicy-numbing, rich, complex, creamy",
+          "spice_level": "Medium-hot (adjustable 1-4 scale)",
+          "dietary_options": [],
+          "allergens": ["eggs", "soy", "wheat", "pork", "garlic", "sesame"],
+          "customizations": [
+            "spice_level_1_to_4",
+            "noodle_firmness",
+            "extra_toppings_for_charge"
+          ],
+          "customer_questions": [
+            "What does mala mean?",
+            "Is this really spicy?",
+            "What's the difference between Mala and Mala Kotteri?",
+            "Is the garlic overwhelming?",
+            "What's in the black garlic oil?"
+          ],
+          "review_highlights": [
+            "Favorite ramen in Seattle",
+            "Reminds of mala hotpot broth",
+            "Perfect noodle texture - chewy and bouncy",
+            "Love the garlic oil and crispy chips",
+            "Complex flavor stays with you long after",
+            "Best bowl in Seattle for garlic lovers",
+            "Intense but balanced flavors"
+          ],
+          "pairs_well_with": ["appetizer_001", "appetizer_003"],
+          "best_for": "Garlic lovers, spice enthusiasts, anyone seeking bold complex flavors"
+        },
+        {
+          "id": "ramen_002",
+          "name": "Mala Ramen",
+          "price": "$19.50",
+          "is_bestseller": true,
+          "description": "Spicy, numbing ramen with our signature mala (麻辣) flavor profile - Sichuan peppercorn and chili heat. Silky pork broth topped with char siu, bamboo shoots, aji-tamago, scallion, and aroma oil. Slightly less garlic-forward than Mala Kotteri but same mala sensation.",
+          "flavor_profile": "Spicy, numbing (mala), savory, slightly lighter than kotteri",
+          "spice_level": "Medium-hot (adjustable 1-4 scale)",
+          "dietary_options": [],
+          "allergens": ["eggs", "soy", "wheat", "pork"],
+          "customizations": [
+            "spice_level_1_to_4",
+            "noodle_firmness",
+            "extra_toppings_for_charge"
+          ],
+          "customer_questions": [
+            "What's the difference between Mala and Mala Kotteri?",
+            "Can I adjust the spice level?",
+            "What does mala mean?",
+            "Is this less spicy than Mala Kotteri?"
+          ],
+          "review_highlights": [
+            "Perfect mala flavor balance",
+            "Broth is addictive",
+            "Great for mala lovers on a budget"
+          ],
+          "pairs_well_with": ["appetizer_001", "appetizer_002"],
+          "best_for": "Those wanting mala spice without the extra garlic intensity"
+        },
+        {
+          "id": "ramen_003",
+          "name": "Kotteri Ramen",
+          "price": "$19.50",
+          "is_bestseller": true,
+          "description": "Rich, thick-style (kotteri) ramen for garlic lovers. Creamy pork broth infused with black garlic oil, topped with pork belly char siu, bamboo shoots, aji-tamago, scallion, and garlic chips. No spice - pure rich garlic flavor.",
+          "flavor_profile": "Savory, intensely garlicky, creamy, rich, no heat",
+          "spice_level": "None - not spicy",
+          "dietary_options": [],
+          "allergens": ["eggs", "soy", "wheat", "pork", "garlic", "sesame"],
+          "customizations": [
+            "noodle_firmness",
+            "extra_toppings_for_charge"
+          ],
+          "customer_questions": [
+            "What's kotteri style?",
+            "How garlicky is it?",
+            "Is this spicy?",
+            "What's the difference between Kotteri and Mala Kotteri?"
+          ],
+          "review_highlights": [
+            "Rich and flavorful",
+            "Best for garlic lovers",
+            "Creamy broth perfectly coats noodles",
+            "Perfect for those who want flavor without heat"
+          ],
+          "pairs_well_with": ["appetizer_002", "appetizer_004"],
+          "best_for": "Garlic enthusiasts, those avoiding spice, comfort food seekers"
+        },
+        {
+          "id": "ramen_004",
+          "name": "Shoyu Ramen",
+          "price": "$18.50",
+          "description": "Traditional soy sauce-based broth ramen. Light dashi broth with house shoyu tare and burnt green onion. Simple yet soul-satisfying with house-made noodles. Topped with char siu, bamboo shoots, aji-tamago, scallion, and aroma oil.",
+          "flavor_profile": "Savory, umami-rich, light, clean, subtle",
+          "spice_level": "None",
+          "dietary_options": [],
+          "allergens": ["eggs", "soy", "wheat"],
+          "customizations": [
+            "noodle_firmness",
+            "extra_toppings_for_charge"
+          ],
+          "customer_questions": [
+            "What's the difference between shoyu and kotteri?",
+            "Is this light or heavy?",
+            "What's shoyu flavor?"
+          ],
+          "review_highlights": [
+            "Soul satisfying",
+            "Clean broth with depth",
+            "Perfect for those wanting flavor without spice or richness"
+          ],
+          "best_for": "Traditionalists, those seeking lighter broth, umami lovers"
+        },
+        {
+          "id": "ramen_005",
+          "name": "Shio Ramen",
+          "price": "$18.50",
+          "description": "Salt-based (shio) ramen with yuzu citrus brightness. Very light dashi broth with house shio tare, toasted wheat bran noodles, char siu, bamboo shoots, aji-tamago, scallion, and aroma oil. Citrus notes make this refreshing.",
+          "flavor_profile": "Savory, bright citrus (yuzu), light, clean, slightly tangy",
+          "spice_level": "None",
+          "dietary_options": [],
+          "allergens": ["eggs", "soy", "wheat"],
+          "customizations": [
+            "noodle_firmness",
+            "extra_toppings_for_charge"
+          ],
+          "customer_questions": [
+            "What does yuzu taste like?",
+            "Is this spicy?",
+            "How light is this broth?"
+          ],
+          "review_highlights": [
+            "Refreshing and balanced",
+            "Yuzu adds nice brightness"
+          ],
+          "best_for": "Those wanting lighter broth, citrus lovers, nice contrast to spicy dishes"
+        },
+        {
+          "id": "ramen_006",
+          "name": "Mapo Tofu Ramen",
+          "price": "$19.50",
+          "description": "Fusion mala ramen with Sichuan twist. Silky pork soup with shoyu flavor, ground pork, silky tofu, spicy mala heat, topped with noodles, zacai (Sichuan pickled mustard green), char siu, and scallion. Spice level adjustable.",
+          "flavor_profile": "Mala spice, savory, numbing, Sichuan-inspired",
+          "spice_level": "Medium-hot (adjustable 1-4)",
+          "dietary_options": [],
+          "allergens": ["eggs", "soy", "wheat", "pork"],
+          "customizations": [
+            "spice_level_1_to_4",
+            "noodle_firmness",
+            "extra_toppings_for_charge"
+          ],
+          "customer_questions": [
+            "What's in this ramen?",
+            "Is this very spicy?",
+            "What's zacai?"
+          ],
+          "best_for": "Sichuan cuisine lovers, those wanting tofu in their ramen"
+        },
+        {
+          "id": "ramen_007",
+          "name": "Spicy Vegetarian Miso Ramen",
+          "price": "$19.50",
+          "is_vegetarian": true,
+          "can_be_vegan": true,
+          "description": "Miso-based vegetarian broth with house-made spicy mala chili. Topped with green vegetables, corn, tofu skin, mushrooms, and fresh noodles. Completely plant-based when made without butter. Warming miso with numbing spicy heat.",
+          "flavor_profile": "Miso umami, mala spice, earthy mushrooms, complex",
+          "spice_level": "Medium (adjustable)",
+          "dietary_options": ["vegetarian", "can_be_made_vegan"],
+          "allergens": ["soy", "wheat", "possible nuts in some ingredients"],
+          "customizations": [
+            "spice_level",
+            "extra_tofu",
+            "noodle_firmness",
+            "hold_corn_butter_for_vegan"
+          ],
+          "customer_questions": [
+            "Can this be made vegan?",
+            "What vegetables are included?",
+            "Is this substantial enough as main course?",
+            "What's in the vegan version?"
+          ],
+          "review_highlights": [
+            "Great vegetarian option",
+            "Substantial and filling",
+            "Spice balances miso well"
+          ],
+          "best_for": "Vegetarians, vegans (ask about vegan version), miso lovers seeking spice"
+        },
+        {
+          "id": "ramen_008",
+          "name": "Vegetarian Miso Ramen",
+          "price": "$18.50",
+          "description": "Miso-flavored broth with house-made spicy chili oil creating bold heat. Topped with vegetables, mushrooms, corn, tofu skin, char siu, bamboo shoots, aji-tamago, and scallion.",
+          "flavor_profile": "Miso umami",
+          "spice_level": "No-spicy",
+          "dietary_options": [],
+          "allergens": ["soy", "wheat", "diary"],
+          "customizations": [
+            "noodle_firmness",
+            "extra_toppings_for_charge"
+          ],
+          "best_for": "Miso lovers wanting kick"
+        },
+        {
+          "id": "ramen_009",
+          "name": "Shanghai Style Ramen (No Pork)",
+          "price": "$12.50",
+          "is_pork_free": true,
+          "description": "Nontraditional Shanghai-inspired broth without pork. Clean, savory broth topped with char siu alternative, bamboo shoots, aji-tamago, scallion, and vegetables. Lighter than typical Ooink ramens but still flavorful.",
+          "flavor_profile": "Savory, clean, umami",
+          "spice_level": "None",
+          "dietary_options": [""],
+          "allergens": ["soy", "wheat"],
+          "customizations": [
+            "noodle_firmness",
+            "extra protein_substitutions",
+            "extra_toppings_for_charge",
+            "add chicken_thigh on the side"
+          ],
+          "customer_questions": [
+            "Does this have pork?",
+            "Can I substitute protein?"
+          ],
+          "best_for": "Those avoiding pork, seeking lighter broth"
+        }
+      ]
+    },
+    {
+      "category": "Appetizers",
+      "description": "Carefully crafted starters featuring fresh ingredients and bold flavors. Many showcase Malaysian-inspired techniques from Chef Ooi.",
+      "items": [
+        {
+          "id": "appetizer_001",
+          "name": "Malaysian Fried Chicken (Spicy Ayam Goreng)",
+          "price": "$13",
+          "bestseller": true,
+          "description": "Chef Ooi's Malaysian heritage showcased in this standout dish. Crispy-fried chicken marinated with fresh chili, galangal, lemongrass, turmeric, garlic, and curry leaves. Perfectly balanced - crispy exterior with moist, flavorful interior. Addictive Malaysian spice profile.",
+          "flavor_profile": "Savory, spicy, aromatic, perfectly balanced crispy-juicy",
+          "spice_level": "Medium-hot",
+          "allergens": ["soy", "wheat", "garlic"],
+          "customizations": [
+            "none"
+          ],
+          "notes": "Customers call this 'the best chicken wings in Seattle' and a must-try. Often sells out and takes 12 mins to cook",
+          "review_highlights": [
+            "Best fried chicken in Seattle",
+            "Perfect crispy-moist balance",
+            "Addictive numbing spice",
+            "Malaysian flavors incredibly balanced",
+            "Absolutely worth the price",
+            "Frequently sells out during peak hours"
+          ],
+          "pairs_well_with": ["ramen_001", "ramen_002"],
+          "best_for": "Those seeking bold spiced fried chicken, Malaysian food lovers"
+        },
+        {
+          "id": "appetizer_002",
+          "name": "Spicy Crispy Chicken Sandwich",
+          "price": "$13",
+          "bestseller": true,
+          "description": "Spicy fried chicken sandwich. Crispy fried chicken patty served on bread with house spice blend. Some say it's some of the best in Seattle. Frequently sells out.",
+          "flavor_profile": "Spicy, crispy, savory",
+          "spice_level": "Medium-hot",
+          "allergens": ["wheat", "soy"],
+          "notes": "Popular item that sells out quickly during peak hours",
+          "review_highlights": [
+            "Some of the best in Seattle",
+            "Frequently sells out",
+            "Perfect spice balance"
+          ],
+          "best_for": "Those wanting handheld spicy chicken"
+        },
+        {
+          "id": "appetizer_003",
+          "name": "Gyoza (Potstickers)",
+          "price": "$8",
+          "description": "Pan-fried dumplings with pork and fresh ingredients. Ooink gyoza are famous for generous filling and perfect golden-brown exterior. Hand-rolled with care. Traditionally 6 pieces per order.",
+          "portion_size": "6 pieces",
+          "flavor_profile": "Savory, umami-rich, perfectly crispy bottom",
+          "allergens": ["wheat", "soy", "pork"],
+          "customizations": ["extra_order"],
+          "notes": "Frequently praised as some of the best gyoza in Seattle. Hand-rolled, not mass-produced.",
+          "review_highlights": [
+            "Best gyoza in city",
+            "Amazing flavor",
+            "Tender meat, crispy bottoms",
+            "Generous filling",
+            "Incredibly fresh"
+          ],
+          "pairs_well_with": ["ramen_003", "ramen_005"],
+          "best_for": "Dumpling lovers, perfect starter"
+        },
+        {
+          "id": "appetizer_004",
+          "name": "Cucumber Salad",
+          "price": "$8",
+          "vegetarian": true,
+          "vegan": true,
+          "description": "Crisp Persian cucumber combined with crushed peanuts, garlic, and shallot, tossed together with sesame oil. Refreshing, crunchy, with sesame-forward dressing. Beautifully presented.",
+          "flavor_profile": "Crispy, nutty, sesame, spicy, refreshing",
+          "spice_level": "Light to medium",
+          "allergens": ["peanuts", "sesame", "garlic"],
+          "customizations": [
+            "hold_peanuts_if_allergic",
+            "adjust_spice",
+            "remove_flower_petals"
+          ],
+          "notes": "Presentation includes edible flowers. Nice refreshing contrast to hot ramen.",
+          "review_highlights": [
+            "Refreshing start",
+            "Sesame-forward flavor",
+            "Beautifully presented"
+          ],
+          "pairs_well_with": ["ramen_001", "ramen_002", "appetizer_001"],
+          "best_for": "Those seeking refreshing contrast, vegetable lovers"
+        },
+        {
+          "id": "appetizer_005",
+          "name": "Kabucha Squash with Miso & Curry",
+          "price": "$10",
+          "vegetarian": true,
+          "description": "Kabucha squash cooked in miso and Malaysian curry sauce with curry oil. Topped with pecan nuts (contains tree nuts). Fusion of Japanese miso with Malaysian curry - Chef Ooi's fusion approach.",
+          "flavor_profile": "Sweet squash, umami miso, aromatic curry, nutty",
+          "allergens": ["pecans", "nuts", "soy"],
+          "customizations": [
+            "hold_nuts_if_allergic"
+          ],
+          "best_for": "Vegetarians, those seeking unique fusion vegetable dish"
+        }
+      ]
+    },
+    {
+      "category": "Sides & Extras",
+      "description": "Add-ons and extras to customize your ramen experience. Extra noodles often available free by the register.",
+      "items": [
+        {
+          "id": "side_001",
+          "name": "Extra Toppings",
+          "price": "$3.50-7.50",
+          "description": "Additional toppings available to customize your ramen. Common extras include char siu (pork), extra egg (aji-tamago), garlic chips, bamboo shoots, green onion, tofu skin, and vegetables.",
+          "options": [
+            "char_siu_roast_pork",
+            "aji_tamago_marinated_egg",
+            "garlic_chips",
+            "bamboo_shoots",
+            "green_onion",
+            "tofu_skin",
+            "extra_vegetables",
+            "mushrooms"
+          ]
+        },
+        {
+          "id": "side_002",
+          "name": "Extra Noodles (Free)",
+          "price": "Free",
+          "description": "Ooink provides complimentary extra noodles available by the register as part of their zero-waste philosophy. Self-serve - grab a packet as you leave.",
+          "notes": "Popular item showing Ooink's commitment to zero-waste and giving back to community"
+        },
+        {
+          "id": "side_003",
+          "name": "House Mala Chili Oil",
+          "price": "$2.50 (in-house packet for ramen)",
+          "available_retail": true,
+          "description": "Ooink's signature spicy chili oil with Sichuan numbing spice. Intensely flavorful - start with a little and add more. Used to power their mala dishes. Also sold in retail bottles for home use.",
+          "flavor_profile": "Fiery heat, numbing Sichuan spice, balanced, addictive",
+          "uses": "Add to ramen, use on any dish for instant flavor upgrade, incredibly addictive",
+          "review_highlights": [
+            "Perfectly balanced flavor and heat",
+            "Extremely addictive",
+            "Makes any bland cooking taste amazing",
+            "Intense so start small",
+            "10/10 would recommend"
+          ]
+        }
+      ]
+    }
+  ],
+
+  "common_customer_questions": [
+    {
+      "question": "What should I order if I'm new to Ooink?",
+      "answer": "Start with the Mala Kotteri Ramen - it's our signature dish and best represents what we do. Pair it with the Malaysian Fried Chicken appetizer (Ayam Goreng) for the full Ooink experience. If you can't handle spice, go with Kotteri Ramen instead. Both showcase our fresh noodles and flavor complexity.",
+      "related_items": ["ramen_001", "appetizer_001"]
+    },
+    {
+      "question": "What does 'mala' mean?",
+      "answer": "Mala (麻辣) is a Sichuan Chinese flavor profile combining two sensations: 'ma' (numbing) from Sichuan peppercorns and 'la' (spicy heat) from chili. You get both a numbing sensation and spicy burn simultaneously - it's addictive and complex. Ooink's mala uses this authentic profile with shoyu flavor.",
+      "related_items": ["ramen_001", "ramen_002"]
+    },
+    {
+      "question": "What's the difference between Mala and Mala Kotteri?",
+      "answer": "Both have our signature mala (spicy, numbing) flavor. Mala Kotteri is creamier with a thick broth base and lots MORE garlic flavor - it comes with black garlic oil and crispy garlic chips on top. Mala Kotteri is richer and more intense. Regular Mala is slightly lighter with the same mala sensation but less garlic emphasis. Mala Kotteri is our most popular dish.",
+      "related_items": ["ramen_001", "ramen_002"]
+    },
+    {
+      "question": "What does 'kotteri' mean?",
+      "answer": "Kotteri (こってり) means a thick, rich, creamy style of ramen broth in Japanese. Our kotteri broths are infused with garlic or mala spices and cling beautifully to the noodles. These are comfort-food ramen for those who want maximum flavor intensity.",
+      "related_items": ["ramen_001", "ramen_003"]
+    },
+    {
+      "question": "Is Ooink spicy? Can I adjust the spice level?",
+      "answer": "Many Ooink dishes feature mala-forward (spicy, numbing) flavors, but you have FULL control. Our ramen with adjustable heat comes with a 1-4 spice scale. Level 1 is mild, level 4 is hot. We also have non-spicy options like Kotteri Ramen (pure garlic), Shoyu Ramen (traditional soy), and Shio Ramen (citrus salt). Ask our staff and we'll help you find the right heat level.",
+      "related_items": ["ramen_001", "ramen_003", "ramen_004", "ramen_005"]
+    },
+    {
+      "question": "What's your best non-spicy option?",
+      "answer": "Try Kotteri Ramen - rich, creamy, intensely garlicky, ZERO spice. Perfect for garlic lovers. Or try Shoyu Ramen (traditional soy sauce broth) for something cleaner and lighter. Both showcase our fresh noodles without heat.",
+      "related_items": ["ramen_003", "ramen_004"]
+    },
+    {
+      "question": "Do you have vegetarian or vegan options?",
+      "answer": "Yes! We offer Spicy Vegetarian Miso Ramen, and Shanghai Style Ramen (no pork) can be made vegetarian. Ask about making these vegan - we can skip the egg and butter. We also have vegetarian appetizers like Spicy Cucumber Salad and Kabucha Squash with Miso & Curry.",
+      "related_items": ["ramen_007", "ramen_009", "appetizer_004", "appetizer_005"]
+    },
+    {
+      "question": "Do you have gluten-free options?",
+      "answer": "Currently, we do not offer gluten-free noodles. Our noodles are made fresh daily from wheat flour. We cannot guarantee zero cross-contamination due to our kitchen setup. Please inform our staff of any allergies.",
+      "related_items": []
+    },
+    {
+      "question": "What allergens should I know about?",
+      "answer": "Our menu contains common allergens including wheat (noodles, soy sauce), soy (soy sauce, miso, tofu), eggs (in aji-tamago toppings), and various proteins (pork, chicken). Many dishes contain garlic and sesame. Some dishes contain tree nuts (peanuts, pecans). Always inform our staff of allergies - we'll help you find safe options and cannot guarantee zero cross-contamination.",
+      "related_items": []
+    },
+    {
+      "question": "How long is the wait time and when are you open?",
+      "answer": "Fremont location (3630 Stone Way N): Sun-Thu 5:00 PM-9:30 PM, Fri-Sat 5:00 PM-11:00 PM. Food prep typically takes 5-10 minutes once you order at our kiosk. During peak dinner hours (5:30-8:30 PM on weekends), there may be 10-30 minute wait for seating. Best tip: Arrive after 6:30 PM on busy evenings or call (206) 588-2035.",
+      "related_items": []
+    },
+    {
+      "question": "How do I order at Fremont?",
+      "answer": "Self-service kiosk system: 1) Walk in and add your name to waitlist if needed, 2) When a table is ready, order at the digital kiosk (tablet interface), 3) Pay at kiosk with card or cash, 4) Seat yourself. Food is brought to your table when ready. It's fast and efficient.",
+      "related_items": []
+    },
+    {
+      "question": "Can I customize my ramen?",
+      "answer": "Absolutely! You can adjust spice levels (1-4 scale), noodle firmness, and add extra toppings like char siu, eggs, garlic chips, vegetables for small additional charge. We want you to enjoy exactly what you want.",
+      "related_items": []
+    },
+    {
+      "question": "What makes Ooink special compared to other ramen shops?",
+      "answer": "Three things: 1) Fresh noodles made daily from scratch - our thin, bouncy noodles are praised as the best texture in Seattle. 2) Bold, nontraditional fusion flavors - mala-forward broths and Malaysian-inspired dishes show Chef Ooi's unique approach. 3) Ingredient quality and care - we source fresh daily and have zero-waste philosophy. Customers say we're their favorite ramen place in Seattle.",
+      "related_items": ["ramen_001"]
+    },
+    {
+      "question": "Do your fried chicken dishes sell out?",
+      "answer": "Yes, Malaysian Fried Chicken (Ayam Goreng) and Spicy Crispy Chicken Sandwich are very popular and frequently sell out during peak hours (5:30-8:30 PM on weekends). We recommend arriving early or calling ahead at (206) 588-2035 to check availability.",
+      "related_items": ["appetizer_001", "appetizer_002"]
+    },
+    {
+      "question": "Is there outdoor seating at Fremont?",
+      "answer": "Yes! Fremont location has a small outdoor patio area, perfect for nice weather. Seating also available inside at tables and the bar near the kitchen.",
+      "related_items": []
+    },
+    {
+      "question": "What's the parking situation at Fremont?",
+      "answer": "Street parking only - no dedicated lot. Parking can be challenging during peak evening hours (5:30-8:30 PM weekends). Plan 10-20 minutes to find a spot on busy nights. Best strategy: arrive after 6:30 PM on weekends for easier parking and fewer seating waits.",
+      "related_items": []
+    },
+    {
+      "question": "Do you have delivery or takeout?",
+      "answer": "Yes! Order online through ooinkramen.com, DoorDash, or Uber Eats for delivery or pickup. Fremont hours for takeout: Sun-Thu 5:00 PM-9:30 PM, Fri-Sat 5:00 PM-11:00 PM. You can also order retail ramen kits online from shopooink.com.",
+      "related_items": []
+    },
+    {
+      "question": "What's your payment policy and is tipping included?",
+      "answer": "We accept credit cards, Samsung Pay, and Apple Pay. Service charge is included in your final bill - transparent pricing. Additional tipping is available if you'd like.",
+      "related_items": []
+    },
+    {
+      "question": "What's unique about Fremont location vs Capitol Hill?",
+      "answer": "Capitol Hill (original) is tiny, intimate, lunch-dinner location - great for solo/couples. Fremont opened in 2022, dinner-only (5 PM opening), larger space better for groups, has outdoor patio, full bar, digital kiosk ordering. Fremont is more buzzy and group-friendly while Capitol Hill is quiet and cozy.",
+      "related_items": []
+    },
+    {
+      "question": "Tell me about the owners and Ooink's story.",
+      "answer": "Ooink is owned by Chef Chong Boon Ooi and his wife Jiaxin Wang. Chef Ooi brings Malaysian culinary roots visible in signature dishes like Ayam Goreng (Malaysian fried chicken). They opened the original Capitol Hill location in 2016 above a QFC store. They expanded to Fremont in 2022. The restaurant is named 'Ooink' with a pig logo, celebrating bold fusion flavors that break ramen conventions. Their philosophy: respect the ingredients, source fresh daily, zero waste (free noodles by register).",
+      "related_items": []
+    },
+    {
+      "question": "What do locals order vs what do tourists order?",
+      "answer": "Locals order the Mala Kotteri Ramen (our signature) and come back repeatedly. They also know to grab the Malaysian Fried Chicken before it sells out. Tourists often ask for recommendations and we guide them to start with Mala Kotteri or non-spicy Kotteri depending on heat tolerance. Both groups praise our gyoza - it's beloved by everyone.",
+      "related_items": ["ramen_001", "appetizer_001", "appetizer_003"]
+    },
+    {
+      "question": "How long does food typically take?",
+      "answer": "Fresh ramen typically takes 10-15 minutes from order to table. Appetizers like fried chicken and gyoza take 5-10 minutes. Our made-to-order approach ensures quality but means slight waits. During peak hours, total experience (seating + food) may take 45 minutes to 1 hour.",
+      "related_items": []
+    },
+    {
+      "question": "Is Ooink kid-friendly?",
+      "answer": "Yes, Ooink is family-friendly. We have vegetarian and non-spicy options for kids. The casual, efficient service model works well for families. Note that Fremont location opens at 5 PM (dinner only), so good for family dinner.",
+      "related_items": []
+    },
+    {
+      "question": "Is there WiFi?",
+      "answer": "No, WiFi is not available for customers.",
+      "related_items": []
+    },
+    {
+      "question": "Do you have bathrooms?",
+      "answer": "Yes, Fremont location has one restroom facility available for customers.",
+      "related_items": []
+    },
+    {
+      "question": "What about noise level and atmosphere?",
+      "answer": "Fremont is a buzzy, upbeat, social atmosphere - more like a vibrant bar scene. Capitol Hill is quieter and more intimate. Both are casual, fast-paced, and fun. Fremont's open kitchen and patio create lively energy.",
+      "related_items": []
+    },
+    {
+      "question": "What should I order if I have a light appetite?",
+      "answer": "Try Very Light Dashi Ramen or Shio Ramen - both are lighter broths. Pair with Spicy Cucumber Salad for a refreshing, lighter meal. These highlight our broth quality and fresh noodles without being heavy.",
+      "related_items": ["ramen_010", "ramen_005", "appetizer_004"]
+    },
+    {
+      "question": "What should I order if I'm VERY hungry?",
+      "answer": "Get Mala Kotteri Ramen (rich, filling) with Malaysian Fried Chicken and Gyoza. The creamy kotteri broth and protein-rich toppings plus the substantial appetizers will definitely satisfy. Many customers pair ramen with 2-3 appetizers.",
+      "related_items": ["ramen_001", "appetizer_001", "appetizer_003"]
+    },
+    {
+      "question": "What dishes pair well together?",
+      "answer": "Great combinations: (1) Mala Kotteri Ramen + Malaysian Fried Chicken + Spicy Cucumber Salad = bold spice + refreshing contrast. (2) Kotteri Ramen + Gyoza = rich garlic broth + crispy dumplings = classic pairing. (3) Shoyu Ramen + Kabucha Squash = light broth + earthy vegetable = balanced meal. (4) Any ramen + Malaysian Fried Chicken = always works, chicken is universally loved.",
+      "related_items": ["ramen_001", "ramen_003", "appetizer_001", "appetizer_003", "appetizer_004", "appetizer_005"]
+    },
+    {
+      "question": "What do reviews say about Ooink?",
+      "answer": "Ooink averages 4.3-4.7 stars. Customers consistently praise: 'best noodle texture in Seattle,' 'favorite ramen place in Seattle,' 'Malaysian Fried Chicken is some of the best in Seattle,' 'gyoza are incredible,' 'fast service,' 'bold complex flavors,' 'fresh ingredients visible in every bite.' Main considerations: prices are $17-20+ per ramen (reflects quality), Fremont parking can be challenging, popular items sell out.",
+      "related_items": []
+    }
+  ],
+
+  "dietary_reference": {
+    "vegetarian": "Contains no meat, poultry, or seafood. May contain eggs and dairy.",
+    "vegan": "Contains no animal products including meat, dairy, eggs, or honey. Ask about making vegetarian ramen vegan.",
+    "can_be_made_vegetarian": "Can be modified to remove meat/seafood and use vegetable-based alternatives upon request.",
+    "can_be_made_vegan": "Can be modified to remove all animal products upon request - specify no eggs, no butter/dairy.",
+    "spice_levels": "Adjustable 1-4 scale on most mala dishes. 1=mild, 2=medium, 3=hot, 4=very hot",
+    "gluten_free": "Currently NOT available. Noodles made fresh daily from wheat flour."
+  },
+
+  "allergen_reference": {
+    "wheat": "Noodles, wrappers, soy sauce, panko breading",
+    "soy": "Soy sauce, miso, tofu, some dressings",
+    "eggs": "Aji-tamago (marinated soft-boiled egg topping), may be in other preparations",
+    "shellfish": "Not primary, but check soy-based broths",
+    "fish": "May be in dashi broth base",
+    "dairy": "Butter in some vegetable dishes, corn butter in some sides",
+    "garlic": "Heavy in kotteri and mala kotteri broths, extensive garlic chip usage",
+    "sesame": "Sesame oil in dressings and some broths, sesame seeds on some dishes",
+    "tree_nuts": "Peanuts in spicy cucumber salad, pecans in kabucha squash, possible nuts in some chili preparations",
+    "pork": "Char siu (roast pork), pork broth, ground pork in some preparations",
+    "chicken": "Malaysian fried chicken, chicken sandwich"
+  },
+
+  "restaurant_policies": {
+    "fremont_location": {
+      "address": "3630 Stone Way N, Seattle, WA 98103",
+      "phone": "(206) 588-2035",
+      "zip_code": "98103",
+      "neighborhood": "Fremont/Wallingford",
+      "hours": {
+        "sunday_thursday": "5:00 PM - 9:30 PM",
+        "friday_saturday": "5:00 PM - 11:00 PM"
+      },
+      "note": "Fremont is dinner-only, opens at 5 PM"
+    },
+    "service_model": {
+      "ordering": "Self-service digital kiosk",
+      "seating": "Self-seat after ordering",
+      "payment": "Pay at kiosk before sitting",
+      "service_charge_included": true,
+      "tipping": "Additional tipping available if desired"
+    },
+    "payment_methods": [
+      "Credit cards",
+      "Cash",
+      "Samsung Pay",
+      "Apple Pay"
+    ],
+    "peak_hours": {
+      "fremont": {
+        "lunch": "N/A - Fremont opens at dinner",
+        "dinner": "5:30 PM - 8:30 PM (especially weekends)"
+      }
+    },
+    "wait_times": {
+      "food_preparation": "10-15 minutes for hot ramen, 5-10 minutes for appetizers",
+      "seating_during_peak": "10-30 minutes on Friday/Saturday evenings, shorter on weeknights",
+      "total_experience_peak_hours": "Up to 45 minutes to 1 hour total (seating + food)"
+    },
+    "seating_notes": "Fremont is larger and more group-friendly than Capitol Hill. Outdoor patio available. Multiple table and bar options.",
+    "customization_policy": "Full customization available - adjust spice levels (1-4 scale), noodle firmness, add/remove toppings for small additional charge",
+    "allergy_policy": "Please inform staff of any allergies. We'll help find suitable options. Cannot guarantee zero cross-contamination.",
+    "takeout_and_delivery": {
+      "available": true,
+      "methods": [
+        "Online at ooinkramen.com",
+        "DoorDash",
+        "Uber Eats",
+        "In-store pickup"
+      ],
+      "fremont_hours": "Sun-Thu 5:00 PM-9:30 PM, Fri-Sat 5:00 PM-11:00 PM"
+    },
+    "parking_fremont": "Street parking only - no dedicated lot. Can be challenging during peak hours. Plan 10-20 minutes on busy evenings.",
+    "wifi": "Available",
+    "restrooms": "One restroom facility",
+    "outdoor_seating": "Available at Fremont location"
+  },
+
+  "brand_personality": {
+    "tone": "Friendly, passionate about fresh ingredients and bold flavors, unpretentious casual",
+    "core_values": [
+      "Fresh daily-made noodles (made from scratch each day)",
+      "High quality ingredients sourced carefully",
+      "Nontraditional Japanese-Chinese fusion (breaks conventions)",
+      "Bold mala-forward flavors with Sichuan inspiration",
+      "Fast, delicious, efficient service",
+      "Zero-waste philosophy",
+      "Respect the ingredients"
+    ],
+    "unique_selling_points": [
+      "Fresh noodles made daily from scratch - best noodle texture in Seattle",
+      "Signature Mala Kotteri Ramen - rich, garlicky, numbing, spicy complexity",
+      "Malaysian-inspired Ayam Goreng with Chef Ooi's heritage",
+      "Nontraditional fusion approach - not your typical ramen shop",
+      "Quality gyoza - hand-rolled, fresh, generous",
+      "Free extra noodles available by register - zero-waste commitment",
+      "Bold commitment to ingredient quality and sourcing"
+    ],
+    "social_media": "Tag @ooinkramen - owners love seeing customer moments and hearing about favorite dishes",
+    "what_customers_say": [
+      "Favorite ramen place in Seattle",
+      "Best noodle texture in Seattle - chewy, bouncy, perfectly soaks up broth",
+      "Best fried chicken in Seattle",
+      "Best gyoza in the city",
+      "Amazing complex flavors that stay with you",
+      "Perfectly balanced bold spices",
+      "Service is fast and delicious",
+      "Really good ramen in fierce Seattle competition",
+      "Worth every penny - quality is evident"
+    ]
+  },
+
+  "context_for_recommendations": {
+    "best_for_first_timers": "Mala Kotteri Ramen + Malaysian Fried Chicken + Spicy Cucumber Salad. This combo showcases all three pillars: fresh noodles, bold mala-fusion flavor, and Chef Ooi's Malaysian roots.",
+    "best_for_spice_lovers": "Mala Kotteri (spice level 4) or Mapo Tofu Ramen (spice level 2). Pair with Malaysian Fried Chicken for double spice. Top with house mala chili oil for extra intensity.",
+    "best_for_spice_avoiders": "Kotteri Ramen (pure garlic, zero spice), Shoyu Ramen, or Shio Ramen. These highlight our broth and noodle quality without heat.",
+    "best_for_garlic_lovers": "Mala Kotteri Ramen or Kotteri Ramen. Both feature black garlic oil and crispy garlic chips. Very garlicky without being overwhelming.",
+    "best_for_vegetarians": "Spicy Vegetarian Miso Ramen. Ask about vegan modifications (hold butter, no egg). Pair with Spicy Cucumber Salad or Kabucha Squash appetizers.",
+    "best_during_rainy_seattle_day": "Any ramen with Mala Kotteri being #1 choice. Warm, comforting, steam will warm your face on cold rainy evening.",
+    "best_for_groups": "Malaysian Fried Chicken + Gyoza + Mala Kotteri Ramen + Shoyu Ramen. Mix of appetizers and different ramen styles for variety. Fremont location better for larger groups.",
+    "best_for_solo_dinner": "Any ramen - order at kiosk, seat yourself, efficient service. Great for solo diners.",
+    "best_for_quick_meal": "Shoyu Ramen or Shio Ramen - lighter broths prepare quickly. Still takes 10-15 min but feels faster.",
+    "best_for_expensive_meal": "Mala Kotteri Ramen + multiple appetizers + sides. Expect $25-50 per person for full experience.",
+    "best_budget_option": "Very Light Shanghai Style Ramen ($12.50) or Crispy Chicken Sandwich . Lighter meal around $25-26 per person."
+  }
+}

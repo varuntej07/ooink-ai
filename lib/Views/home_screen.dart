@@ -226,7 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Builds the pig display based on current state
-  /// - Idle/Listening/Processing: static pig-bot-idle.png
+  /// - Idle: static pig-bot-active.png (awake and ready)
+  /// - Listening/Processing: static pig-bot-active.png
   /// - Speaking: alternating between idle and active
   /// - 10 min idle timeout: Lottie animation
   Widget _buildPigDisplay(ConversationViewModel viewModel) {
@@ -250,9 +251,9 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // Default: show static idle image (for idle, listening, and processing states)
+    // Default: show active image (pig looks awake and ready for idle, listening, and processing states)
     return Image.asset(
-      'assets/pig-bot-idle.png',
+      'assets/pig-bot-active.png',
       width: 350,
       height: 350,
       fit: BoxFit.contain,

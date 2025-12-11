@@ -56,12 +56,14 @@ class ConversationViewModel extends ChangeNotifier {
   // Initialize all services including RAG
   Future<void> initialize() async {
     try {
+      Logger.log('Initializing services...');
       await _ttsService.initialize();
       await _speechService.initialize();
-      await _ragService.initialize(); // Initialize RAG service with embeddings
+      await _ragService.initialize(); // Initialize RAG service with menu knowledge base
+      Logger.log('All services initialized successfully');
     } catch (e, stackTrace) {
       Logger.error('Failed to initialize services', e, stackTrace);
-      _setError('Failed to initialize: $e');
+      _setError('Oink! Having trouble starting up. Please restart the app.');
     }
   }
 

@@ -168,17 +168,34 @@ class ConversationViewModel extends ChangeNotifier {
       // Reset timer again (activity detected)
       _resetInactivityTimer();
 
-      // Speak the response
+      // Speak the response - wrapped in separate try-catch so TTS errors don't kill the whole flow
       _updateState(ConversationState.speaking);
-      await _ttsService.speak(
-        _aiResponse,
-        onComplete: () {
-          _updateState(ConversationState.idle);
-        },
-      );
+      try {
+        Logger.log('Starting TTS for response (${_aiResponse.length} characters)');
+        await _ttsService.speak(
+          _aiResponse,
+          onComplete: () {
+            Logger.log('TTS completed, returning to idle');
+            // Only update state if still in speaking state (user might have interrupted)
+            if (_state == ConversationState.speaking) {
+              _updateState(ConversationState.idle);
+            }
+          },
+        );
+      } catch (ttsError, ttsStackTrace) {
+        // Log TTS error but don't show error to user - they already got the text response
+        Logger.error('TTS failed but continuing', ttsError, ttsStackTrace);
+        // Return to idle after a brief delay so user can read the response
+        Future.delayed(const Duration(seconds: 2), () {
+          if (_state == ConversationState.speaking) {
+            _updateState(ConversationState.idle);
+          }
+        });
+      }
     } catch (e, stackTrace) {
       Logger.error('Failed to process user input and get AI response', e, stackTrace);
-      _setError('Failed to process: $e');
+      // User-friendly error message
+      _setError('Oink! Something went wrong. Please try again!');
     }
   }
 

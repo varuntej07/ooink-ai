@@ -88,21 +88,36 @@ class _HomeScreenState extends State<HomeScreen> {
         body: SafeArea(
           child: Consumer<ConversationViewModel>(
             builder: (context, viewModel, child) {
-              // Schedule state changes after the build phase to avoid setState during build
-              // This uses addPostFrameCallback to defer setState calls until after the current frame
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                // Handle speaking animation start/stop based on state changes
-                if (viewModel.isSpeaking && _speakingAnimationTimer == null) {
-                  _startSpeakingAnimation();
-                } else if (!viewModel.isSpeaking && _speakingAnimationTimer != null) {
-                  _stopSpeakingAnimation();
+              // Immediately handle speaking animation based on current state
+              // This ensures animation starts/stops reliably even for long responses
+              if (viewModel.isSpeaking) {
+                // Start animation if not already running
+                if (_speakingAnimationTimer == null || !_speakingAnimationTimer!.isActive) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted && viewModel.isSpeaking) {
+                      _startSpeakingAnimation();
+                    }
+                  });
                 }
+              } else {
+                // Stop animation if running
+                if (_speakingAnimationTimer != null && _speakingAnimationTimer!.isActive) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted && !viewModel.isSpeaking) {
+                      _stopSpeakingAnimation();
+                    }
+                  });
+                }
+              }
 
-                // Reset idle timer when state changes (user interaction detected)
-                if (!viewModel.isIdle) {
-                  _resetIdleState();
-                }
-              });
+              // Reset idle timer when state changes (user interaction detected)
+              if (!viewModel.isIdle) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    _resetIdleState();
+                  }
+                });
+              }
 
               return Column(
                 children: [

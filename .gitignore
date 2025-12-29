@@ -13,9 +13,12 @@
 migrate_working_dir/
 
 # Environment variables
-.env
 backend/.env
 backend/node_modules
+
+# Cloud Functions
+functions/node_modules/
+functions/.firebase/
 
 # Android signing keystore
 *.jks

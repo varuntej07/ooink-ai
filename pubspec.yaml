@@ -46,6 +46,7 @@ dependencies:
   firebase_analytics:
   uuid:
   http:
+  cloud_functions:
 
 dev_dependencies:
   flutter_test:

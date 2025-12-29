@@ -7,5 +7,9 @@ class AppConfig {
   static const int geminiMaxTokens = 700;
 
   // RAG Configuration - Number of menu chunks to retrieve for context in semantic search
-  static const int topKChunks = 3;
+  static const int topKChunks = 6;
+
+  // Embedding model for semantic search
+  // text-embedding-004 is the latest Vertex AI model (768 dimensions, best quality)
+  static const String embeddingModel = 'text-embedding-004';
 }

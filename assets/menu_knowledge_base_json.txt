@@ -187,6 +187,7 @@
         {
           "id": "ramen_003",
           "name": "Kotteri Ramen",
+          "also_known_as": "cot terry ramen cottage ramen koh terry ramen thick ramen creamy ramen",
           "price": "$19.50",
           "is_bestseller": true,
           "description": "Rich, thick-style (kotteri) ramen for garlic lovers. Creamy pork broth infused with black garlic oil, topped with pork belly char siu, bamboo shoots, aji-tamago, scallion, and garlic chips. No spice - pure rich garlic flavor.",
@@ -216,6 +217,7 @@
         {
           "id": "ramen_004",
           "name": "Shoyu Ramen",
+          "also_known_as": "soy sauce ramen, show you ramen, show yu ramen, soy ramen",
           "price": "$18.50",
           "description": "Traditional soy sauce-based broth ramen. Light dashi broth with house shoyu tare and burnt green onion. Simple yet soul-satisfying with house-made noodles. Topped with char siu, bamboo shoots, aji-tamago, scallion, and aroma oil.",
           "flavor_profile": "Savory, umami-rich, light, clean, subtle",
@@ -229,7 +231,8 @@
           "customer_questions": [
             "What's the difference between shoyu and kotteri?",
             "Is this light or heavy?",
-            "What's shoyu flavor?"
+            "What's shoyu flavor?",
+            "What is shoyu ramen?"
           ],
           "review_highlights": [
             "Soul satisfying",
@@ -241,6 +244,7 @@
         {
           "id": "ramen_005",
           "name": "Shio Ramen",
+          "also_known_as": "shio ramen she oh ramen salt ramen shiro ramen",
           "price": "$18.50",
           "description": "Salt-based (shio) ramen with yuzu citrus brightness. Very light dashi broth with house shio tare, toasted wheat bran noodles, char siu, bamboo shoots, aji-tamago, scallion, and aroma oil. Citrus notes make this refreshing.",
           "flavor_profile": "Savory, bright citrus (yuzu), light, clean, slightly tangy",
@@ -351,7 +355,7 @@
             "Can I substitute protein?",
             "Does it chicken flavor?"
           ],
-          "best_for": "Those avoiding pork, seeking lighter broth, kids-friendly options"
+          "best_for": "Those avoiding pork, seeking lighter broth, kid friendly"
         }
       ]
     },
@@ -403,6 +407,7 @@
         {
           "id": "appetizer_003",
           "name": "Gyoza (pork-dumplings)",
+          "also_known_as": "goza go za joza dumplings potstickers pot stickers pork dumplings",
           "price": "$8",
           "description": "Pan-fried dumplings with pork and fresh ingredients. Ooink gyoza are famous for generous filling and perfect golden-brown exterior. Hand-rolled with care. Traditionally 6 pieces per order.",
           "portion_size": "6 pieces",
@@ -517,9 +522,9 @@
       "related_items": ["ramen_001", "appetizer_001"]
     },
     {
-    "question": "What does 'shoyu' mean?",
-    "answer": "Traditional soy sauce-based flavour made with house shoyu tare and burnt green onion, and anchovy powder",
-    "related_items": ["ramen_001", "ramen_002"]
+        "question": "What is 'shoyu ramen'?",
+        "answer": "Traditional soy sauce-based flavour made with house shoyu tare and burnt green onion, and anchovy powder",
+        "related_items": ["ramen_001", "ramen_002"]
     },
     {
         "question": "What is the difference between 'shio' and 'shoyu'?",
@@ -632,13 +637,13 @@
       "related_items": []
     },
     {
-      "question": "Is Ooink kid-friendly?",
+      "question": "Is Ooink kid friendly?",
       "answer": "Yes, Ooink is family-friendly. We have vegetarian and non-spicy options for kids. The casual, efficient service model works well for families. Note that Fremont location opens at 5 PM (dinner only), so good for family dinner.",
       "related_items": []
     },
     {
-      "question": "what's kids-friendly ramen?",
-      "answer": "Shanghai style ramen (no pork) is kid-friendly with just scallion and burnt onions on top of the ramen with chicken flavoured water broth and is adjustable upon user request",
+      "question": "what's kid friendly ramen?",
+      "answer": "Shanghai style ramen (no pork) is kid friendly with just scallion and burnt onions on top of the ramen with chicken flavoured water broth and is adjustable upon user request",
       "related_items": []
     },
     {

@@ -304,13 +304,13 @@
             "Can this be made vegan?",
             "What vegetables are included?",
             "Is this substantial enough as main course?",
-            "What's in the vegan version?"
+            "What's in the vegan version?",
             "What kind of veggies?"
           ],
           "review_highlights": [
             "Great vegetarian option",
             "Substantial and filling",
-            "Spice balances miso well"
+            "Spice balances miso well",
             "Veggies are Bok choy"
           ],
           "best_for": "Vegetarians, vegans (ask about vegan version), miso lovers seeking spice,"
@@ -443,7 +443,7 @@
           ],
           "pairs_well_with": ["ramen_001", "ramen_002", "appetizer_001"],
           "best_for": "Those seeking refreshing contrast, vegetable lovers"
-        },
+        }
       ]
     },
     {
@@ -520,12 +520,12 @@
     "question": "What does 'shoyu' mean?",
     "answer": "Traditional soy sauce-based flavour made with house shoyu tare and burnt green onion, and anchovy powder",
     "related_items": ["ramen_001", "ramen_002"]
-    }
-     {
+    },
+    {
         "question": "What is the difference between 'shio' and 'shoyu'?",
         "answer": "shio ramen is more salty than shoyu",
         "related_items": ["ramen_001", "ramen_002"]
-        }
+    },
     {
       "question": "What does 'mala' mean?",
       "answer": "Mala is a Sichuan Chinese flavor profile combining two sensations: 'ma' (numbing) from Sichuan peppercorns and 'la' (spicy heat) from chili. You get both a numbing sensation and spicy burn simultaneously - it's addictive and complex. Ooink's mala uses this authentic profile with shoyu flavor.",
@@ -640,7 +640,7 @@
       "question": "what's kids-friendly ramen?",
       "answer": "Shanghai style ramen (no pork) is kid-friendly with just scallion and burnt onions on top of the ramen with chicken flavoured water broth and is adjustable upon user request",
       "related_items": []
-    }
+    },
     {
       "question": "Is there WiFi?",
       "answer": "No, WiFi is not available for customers.",
@@ -675,7 +675,7 @@
       "question": "What do reviews say about Ooink?",
       "answer": "Ooink averages 4.4-4.8 stars. Customers consistently praise: 'best noodle texture in Seattle,' 'favorite ramen place in Seattle,' 'Malaysian Fried Chicken is some of the best in Seattle,' 'gyoza are incredible,' 'fast service,' 'bold complex flavors,' 'fresh ingredients visible in every bite.' Main considerations: prices are $17-20+ per ramen (reflects quality), Fremont parking can be challenging, popular items sell out.",
       "related_items": []
-    }
+    },
     {
       "question": "Do you guys do reservations?",
       "answer": "Unfortunately we do not do reservations at neither of our locations, it's first come first serve!",

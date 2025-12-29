@@ -64,6 +64,7 @@ class ConversationViewModel extends ChangeNotifier {
     } catch (e, stackTrace) {
       Logger.error('Failed to initialize services', e, stackTrace);
       _setError('Oink! Having trouble starting up. Please restart the app.');
+      rethrow; // Rethrow so main.dart knows initialization failed
     }
   }
 

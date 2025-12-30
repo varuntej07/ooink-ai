@@ -1,0 +1,26 @@
+{
+  "name": "ooink-cloud-functions",
+  "description": "Firebase Cloud Functions for Ooink AI Assistant",
+  "version": "1.0.0",
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "@google-cloud/aiplatform": "^4.0.0",
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^7.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0"
+  }
+}

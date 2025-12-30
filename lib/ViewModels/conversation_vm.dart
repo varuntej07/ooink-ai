@@ -96,6 +96,7 @@ class ConversationViewModel extends ChangeNotifier {
 
     _updateState(ConversationState.listening);
     _userInput = '';
+    _aiResponse = ''; // Clear previous response so user can see their new question
     _errorMessage = '';
 
     try {

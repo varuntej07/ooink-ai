@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'firebase_options.dart';
 import 'Views/home_screen.dart';
 import 'ViewModels/conversation_vm.dart';
@@ -12,7 +13,7 @@ import 'services/rag_service.dart';
 import 'services/firestore_service.dart';
 import 'repositories/session_repository.dart';
 
-/// Main entry point - initializes environment variables, Firebase, and Crashlytics
+/// Main entry point - initializes Firebase, Crashlytics, and wake lock for all-day operation
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -21,12 +22,16 @@ void main() async {
 
   // Initialize Firebase Crashlytics for error logging and monitoring
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-  
+
   // Catch async errors that aren't handled by FlutterError
   PlatformDispatcher.instance.onError = (error, stack) {
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     return true;
   };
+
+  // This prevents iPad/Android tablet from sleeping and interrupting customer interactions
+  // for restaurant deployment where the app runs continuously
+  await WakelockPlus.enable();
 
   runApp(const OoinkApp());
 }

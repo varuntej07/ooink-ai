@@ -1,5 +1,6 @@
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../utils/logger.dart';
 
@@ -34,12 +35,36 @@ class VertexAIService {
     }
   }
 
+  /// Returns true when the Gemini model is ready.
+  /// Exposed so test subclasses can override to bypass the null-guard without calling initialize().
+  @visibleForTesting
+  bool get isModelReady => _model != null;
+
+  /// Returns true when Cloud Functions is ready for embedding calls.
+  /// Same pattern as isModelReady — allows test subclasses to bypass the guard.
+  @visibleForTesting
+  bool get isFunctionsReady => _functions != null;
+
+  /// Delay function used between retries — injectable so unit tests can run at zero delay.
+  /// In production this is the real Future.delayed; in tests override to a no-op.
+  @visibleForTesting
+  Future<void> Function(Duration) get delayFn => Future.delayed;
+
+  /// Makes the actual Gemini generateContent API call.
+  /// Extracted from the retry loop so tests can subclass and override just this call
+  /// to simulate successes/failures without initializing Firebase.
+  @visibleForTesting
+  Future<String?> invokeModel(String prompt) async {
+    final response = await _model!.generateContent([Content.text(prompt)]);
+    return response.text;
+  }
+
   /// Generates content based on the provided prompt using Firebase AI with automatic retry logic
   /// Takes a string prompt and returns the AI-generated response
   /// Implements exponential backoff retry (3 attempts) to handle transient network issues in kiosk environment
   /// This prevents single WiFi hiccups from causing customer-facing errors
   Future<String> generateContent(String prompt) async {
-    if (_model == null) {
+    if (!isModelReady) {
       throw Exception('Firebase AI Service not initialized. Call initialize() first.');
     }
 
@@ -48,13 +73,13 @@ class VertexAIService {
 
     while (retryCount < maxRetries) {
       try {
-        final response = await _model!.generateContent([Content.text(prompt)]);
+        final text = await invokeModel(prompt);
 
         // Success - return response immediately
         if (retryCount > 0) {
           Logger.log('AI request succeeded on retry #$retryCount');
         }
-        return response.text ?? '';
+        return text ?? '';
 
       } catch (e, stackTrace) {
         retryCount++;
@@ -69,12 +94,30 @@ class VertexAIService {
         // This gives WiFi time to recover from brief interruptions
         final delaySeconds = retryCount * 2;
         Logger.log('AI request failed (attempt $retryCount/$maxRetries), retrying in ${delaySeconds}s... Error: $e');
-        await Future.delayed(Duration(seconds: delaySeconds));
+        await delayFn(Duration(seconds: delaySeconds));
       }
     }
 
     // Should never reach here, but safety fallback
     return "Sorry, I'm having trouble connecting right now. Please try again!";
+  }
+
+  /// Makes the actual Cloud Functions embedding API call.
+  /// Extracted from the retry loop so tests can subclass and override just this call
+  /// to simulate network failures without initializing Firebase or Cloud Functions.
+  @visibleForTesting
+  Future<List<double>> invokeEmbedding(String text) async {
+    final callable = _functions!.httpsCallable('generateEmbedding');
+    final result = await callable.call<Map<String, dynamic>>({'text': text});
+    final data = result.data;
+    if (!data.containsKey('embedding')) {
+      throw Exception('Invalid response from Cloud Function: missing embedding data');
+    }
+    final embedding = List<double>.from(data['embedding'] as List);
+    if (embedding.length != 768) {
+      throw Exception('Invalid embedding dimensions: expected 768, got ${embedding.length}');
+    }
+    return embedding;
   }
 
   /// Generates embedding vector for the given text using Vertex AI via Cloud Functions with retry logic
@@ -84,7 +127,7 @@ class VertexAIService {
   /// - This vector is compared against pre-computed menu embeddings using cosine similarity
   /// - Implements retry logic for transient network failures in kiosk environment
   Future<List<double>> generateEmbedding(String text) async {
-    if (_functions == null) {
+    if (!isFunctionsReady) {
       throw Exception('Firebase AI Service not initialized. Call initialize() first.');
     }
 
@@ -95,26 +138,7 @@ class VertexAIService {
       try {
         Logger.log('RAG: Calling Cloud Function to generate embedding (attempt ${retryCount + 1}/$maxRetries)...');
 
-        // Call the generateEmbedding Cloud Function
-        final callable = _functions!.httpsCallable('generateEmbedding');
-
-        final result = await callable.call<Map<String, dynamic>>({
-          'text': text,
-        });
-
-        // Extract embedding from response
-        final data = result.data;
-
-        if (!data.containsKey('embedding')) {
-          throw Exception('Invalid response from Cloud Function: missing embedding data');
-        }
-
-        final embedding = List<double>.from(data['embedding'] as List);
-
-        // Validate embedding dimensions (should be 768 for text-embedding-004)
-        if (embedding.length != 768) {
-          throw Exception('Invalid embedding dimensions: expected 768, got ${embedding.length}');
-        }
+        final embedding = await invokeEmbedding(text);
 
         if (retryCount > 0) {
           Logger.log('RAG: Embedding request succeeded on retry #$retryCount');
@@ -163,7 +187,7 @@ class VertexAIService {
         // Retry transient errors (deadline-exceeded, resource-exhausted, unauthenticated)
         final delaySeconds = retryCount * 2;
         Logger.log('Embedding request failed (${e.code}), retrying in ${delaySeconds}s...');
-        await Future.delayed(Duration(seconds: delaySeconds));
+        await delayFn(Duration(seconds: delaySeconds));
 
       } catch (e, stackTrace) {
         retryCount++;
@@ -176,7 +200,7 @@ class VertexAIService {
         // Retry on general network errors
         final delaySeconds = retryCount * 2;
         Logger.log('Embedding request failed, retrying in ${delaySeconds}s... Error: $e');
-        await Future.delayed(Duration(seconds: delaySeconds));
+        await delayFn(Duration(seconds: delaySeconds));
       }
     }
 

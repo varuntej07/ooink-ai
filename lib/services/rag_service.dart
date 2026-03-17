@@ -1,10 +1,16 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart';
 import 'package:ooink/services/vertex_ai_service.dart';
 import '../config/app_config.dart';
 import '../utils/logger.dart';
+
+// Refusal phrase used when a query is off-topic — also asserted in tests to verify guardrails
+const String _offTopicRefusal =
+    "I'm Pig, Ooink's menu assistant! I can only help with questions about "
+    "our ramen, menu items, prices, hours, or restaurant. "
+    "What would you like to know? 🐷";
 
 /// Top-level function for parsing JSON in an isolate
 List<EmbeddingChunk> _parseEmbeddingsInIsolate(String jsonString) {
@@ -21,16 +27,27 @@ List<EmbeddingChunk> _parseEmbeddingsInIsolate(String jsonString) {
   }).toList();
 }
 
-/// Top-level function for computing similarities in an isolate
-/// Returns the indices of the top K chunks
-List<int> _computeSimilaritiesInIsolate(
+/// Holds the result of similarity computation: top-K indices AND the highest score found.
+/// Returned from the isolate so _findRelevantContext can check the threshold without
+/// needing a second isolate round-trip.
+class _SimilarityResult {
+  final List<int> topIndices;
+  final double topScore; // Highest cosine similarity across all chunks
+
+  _SimilarityResult(this.topIndices, this.topScore);
+}
+
+/// Top-level function for computing similarities in an isolate.
+/// Returns both the top-K chunk indices AND the best similarity score so the caller
+/// can decide whether the query is on-topic before invoking Gemini.
+_SimilarityResult _computeSimilaritiesInIsolate(
   _SimilarityRequest request,
 ) {
   final queryEmbedding = request.queryEmbedding;
   final chunks = request.chunks;
   final topK = request.topK;
 
-  if (queryEmbedding.isEmpty) return [];
+  if (queryEmbedding.isEmpty) return _SimilarityResult([], 0.0);
 
   // Compute scores
   final List<_ScoreIndex> scores = [];
@@ -43,7 +60,9 @@ List<int> _computeSimilaritiesInIsolate(
   scores.sort((a, b) => b.score.compareTo(a.score));
 
   // Take top K
-  return scores.take(topK).map((s) => s.index).toList();
+  final topK_ = scores.take(topK).toList();
+  final topScore = topK_.isNotEmpty ? topK_.first.score : 0.0;
+  return _SimilarityResult(topK_.map((s) => s.index).toList(), topScore);
 }
 
 double _calculateCosine(List<double> a, List<double> b) {
@@ -80,8 +99,14 @@ class _ScoreIndex {
 /// Service for Retrieval-Augmented Generation (RAG) using Firebase Vertex AI
 class RAGService {
   List<EmbeddingChunk>? _embeddings;
-  final VertexAIService _vertexAIService = VertexAIService();
+  final VertexAIService _vertexAIService;
   bool _isInitialized = false;
+
+  /// Default constructor — creates its own VertexAIService (production use).
+  /// Optionally accepts a [vertexAIService] for dependency injection in unit tests
+  /// without requiring actual Firebase initialization.
+  RAGService({VertexAIService? vertexAIService})
+      : _vertexAIService = vertexAIService ?? VertexAIService();
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -126,13 +151,24 @@ class RAGService {
 
       // 2. Compute similarity (Heavy Math - Offloaded to Isolate)
       Logger.log('RAG: Computing similarities in background...');
-      final topIndices = await compute(
+      final result = await compute(
         _computeSimilaritiesInIsolate,
-        _SimilarityRequest(queryEmbedding, _embeddings!, topK)
+        _SimilarityRequest(queryEmbedding, _embeddings!, topK),
       );
 
-      // 3. Retrieve chunks
-      final relevantChunks = topIndices.map((i) => _embeddings![i]).toList();
+      // 3. Log the top similarity score so we can tune the threshold after going live
+      Logger.log('RAG: Top similarity score: ${result.topScore.toStringAsFixed(3)} for query: "$query"');
+
+      // 4. Guard: if every menu chunk is a poor match, the query is almost certainly off-topic.
+      // Skip Gemini entirely — return a sentinel that getResponse() converts to the refusal phrase.
+      // This saves cost, latency, and prevents Gemini from being creative with unrelated topics.
+      if (result.topScore < AppConfig.minSimilarityThreshold) {
+        Logger.log('RAG: Score below threshold (${AppConfig.minSimilarityThreshold}), skipping AI — off-topic query blocked');
+        return 'BELOW_THRESHOLD';
+      }
+
+      // 5. Retrieve chunks
+      final relevantChunks = result.topIndices.map((i) => _embeddings![i]).toList();
 
       final relevantContext = relevantChunks.map((c) => c.text).join('\n\n');
       Logger.log('RAG: Retrieved ${relevantContext.length} chars of context');
@@ -140,13 +176,13 @@ class RAGService {
 
     } catch (e, stackTrace) {
       Logger.error('Error finding relevant context', e, stackTrace);
-      
+
       // Pass specific error details to the prompt so the AI (or developer) knows what broke
-      // This is crucial for debugging production issues like API quotas or App Check failures
+      // This is crucial for debugging production issues like API quotas or permission errors
       if (e.toString().contains('API has not been used') || e.toString().contains('403')) {
-        return 'SYSTEM_ERROR: Firebase App Check API is disabled. Please enable it in Google Cloud Console.';
+        return 'SYSTEM_ERROR: Vertex AI API error. Please check API permissions and quota in Google Cloud Console.';
       }
-      
+
       return 'Menu information available. Please ask about our ramen, appetizers, or restaurant details.';
     }
   }
@@ -169,12 +205,33 @@ class RAGService {
         return "⚠️ ${relevantContext.split('SYSTEM_ERROR: ')[1]}";
       }
 
-      // Step 2: Build the full prompt with system instructions and context
+      // Threshold guard: similarity was too low — query is off-topic, skip Gemini entirely.
+      // Return the shared refusal phrase so customers know to ask about the menu instead.
+      if (relevantContext == 'BELOW_THRESHOLD') {
+        Logger.log('RAG: Returning off-topic refusal (below similarity threshold)');
+        return _offTopicRefusal;
+      }
+
+      // Step 2: Build the full prompt with hardened system instructions and context.
+      // The STRICT RULES section below is Task 1.1 — explicit off-topic refusal clauses so
+      // Gemini cannot comply with questions outside Ooink's menu even if it "wants" to.
       final StringBuffer prompt = StringBuffer();
-      prompt.writeln('You are Pig, the friendly AI assistant at Ooink Ramen Restaurant.');
-      prompt.writeln('Answer customer questions about the menu using ONLY the context provided below.');
+      prompt.writeln('You are Pig, the friendly AI assistant at Ooink Ramen Fremont.');
+      prompt.writeln('Your ONLY job is to help customers with questions about Ooink Ramen:');
+      prompt.writeln('menu items, ingredients, prices, restaurant hours, location, parking, and dining experience.');
       prompt.writeln('Be warm, enthusiastic about the food, and keep responses concise (2-3 sentences max).');
-      prompt.writeln('If asked about something not in the context, politely say you don\'t have that info with a friendly tone.\n');
+      prompt.writeln('');
+      prompt.writeln('STRICT RULES — follow these without exception:');
+      prompt.writeln('1. Answer using ONLY the context provided below. Do not invent information.');
+      prompt.writeln('2. ONLY answer questions about Ooink Ramen and its menu. For ANY other topic,');
+      prompt.writeln('   respond with exactly: "I\'m Pig, Ooink\'s menu assistant! I can only help with');
+      prompt.writeln('   menu questions. What would you like to know about our ramen? 🐷"');
+      prompt.writeln('3. Topics you must REFUSE to discuss: math, coding, politics, general knowledge,');
+      prompt.writeln('   other restaurants, personal advice, jokes, weather, or anything not about Ooink.');
+      prompt.writeln('4. Never claim to be a different AI (ChatGPT, Gemini, etc.). You are Pig, exclusively.');
+      prompt.writeln('5. If context is missing for a valid menu question, say: "I don\'t have that detail');
+      prompt.writeln('   right now — our staff can help! Ask them directly. 🐷"');
+      prompt.writeln('');
       prompt.writeln('MENU CONTEXT:');
       prompt.writeln(relevantContext);
       prompt.writeln();
@@ -203,6 +260,14 @@ class RAGService {
   }
 
   bool get isInitialized => _isInitialized;
+
+  /// Injects fake embeddings directly, bypassing asset loading.
+  /// Call this in unit tests instead of initialize() so tests run without real assets or Firebase.
+  @visibleForTesting
+  void setEmbeddingsForTesting(List<EmbeddingChunk> embeddings) {
+    _embeddings = embeddings;
+    _isInitialized = true;
+  }
 }
 
 class EmbeddingChunk {

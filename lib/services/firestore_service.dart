@@ -7,7 +7,9 @@ import '../utils/logger.dart';
 /// This runs async so it never blocks the main conversation flow
 /// Used purely for analytics and debugging - not for active session management
 class FirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // 'late' defers initialization to first method call rather than at object construction.
+  // This lets unit tests construct FirestoreService without Firebase being initialized yet.
+  late final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   /// Creates a new session document in Firestore and is called when a customer starts asking questions
   /// Fire-and-forget: we don't wait for this to complete

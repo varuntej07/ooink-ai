@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ChangeNotifier, visibleForTesting;
 import '../services/speech_to_text_service.dart';
 import '../services/tts_service.dart';
 import '../services/rag_service.dart';
@@ -79,6 +79,10 @@ class ConversationViewModel extends ChangeNotifier {
     Logger.session('Session expired after 90 seconds of inactivity');
     _sessionRepository.clearSession();
   }
+
+  /// Directly triggers session expiry — exposed for unit tests that cannot wait 90 real seconds.
+  @visibleForTesting
+  void triggerInactivityForTesting() => _onSessionExpired();
 
   /// Ensures a session exists, creates one if needed, this is called at the start of each conversation
   Future<void> _ensureSession() async {

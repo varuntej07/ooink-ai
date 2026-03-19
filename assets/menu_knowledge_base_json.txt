@@ -303,7 +303,7 @@
           "flavor_profile": "Miso, mala spice, earthy mushrooms, complex",
           "spice_level": "Medium",
           "dietary_options": ["vegetarian", "can_be_made_vegan"],
-          "allergens": ["soy", "wheat", "possible nuts in some ingredients", "contains nuts", 'dairy'],
+          "allergens": ["soy", "wheat", "possible nuts in some ingredients", "contains nuts", "dairy"],
           "toppings": ["scallion", "wooded mushrooms", "corn butter", "tofu skin", "bakchoi", "seaweed", "corn"],
           "doesn't have": ["egg", "pork"],
           "customizations": [
@@ -355,7 +355,7 @@
           "dietary_options": [""],
           "allergens": ["soy", "wheat"],
           "toppings": ["scallion", "burnt onions"],
-          "doesn't have": ["pork" "chicken piece inside it"],
+          "doesn't have": ["pork", "chicken piece inside it"],
           "customizations": [
             "noodle_firmness",
             "extra protein_substitutions",

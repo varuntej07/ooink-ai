@@ -314,6 +314,28 @@ class ConversationViewModel extends ChangeNotifier {
     super.dispose();
   }
 
+  bool _isFeedbackSubmitting = false;
+  bool get isFeedbackSubmitting => _isFeedbackSubmitting;
+
+  /// Submits anonymous feedback through the session repository — returns true on success, false on failure
+  Future<bool> submitFeedback(String text) async {
+    if (text.trim().isEmpty) return false;
+    _isFeedbackSubmitting = true;
+    notifyListeners();
+    try {
+      await _sessionRepository.submitFeedback(text);
+      Logger.log('Feedback submitted successfully');
+      _isFeedbackSubmitting = false;
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      Logger.error('Failed to submit feedback', e, stackTrace);
+      _isFeedbackSubmitting = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Additional getters for session info (handy for debugging)
   bool get hasActiveSession => _sessionRepository.hasActiveSession;
   int get messageCount => _sessionRepository.messageCount;

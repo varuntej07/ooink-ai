@@ -76,6 +76,21 @@ class FirestoreService {
     }
   }
 
+  /// Saves anonymous customer feedback to root-level 'feedback' collection
+  /// Throws on error so the ViewModel can tell the user it failed (unlike fire-and-forget session writes)
+  Future<void> submitFeedback({
+    required String text,
+    String? sessionId,
+    int? messageCount,
+  }) async {
+    await _firestore.collection('feedback').add({
+      'text': text.trim(),
+      'timestamp': FieldValue.serverTimestamp(),
+      'sessionId': sessionId,           // anonymous — links feedback to its conversation context
+      'messageCount': messageCount ?? 0, // how deep into the chat they were when they gave feedback
+    });
+  }
+
   /// Gets analytics data (optional - for restaurant owner to see usage patterns)
   /// Can query: How many conversations per day? Peak hours? Common questions?
   Future<Map<String, dynamic>> getSessionAnalytics({

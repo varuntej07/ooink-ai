@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../ViewModels/conversation_vm.dart';
 import '../config/app_config.dart';
+import 'feedback_screen.dart';
 
 /// Displays pig bot images with state-based animations:
 /// - Idle/Listening/Processing: static pig-bot-idle.png
@@ -46,6 +47,32 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
+  }
+
+  /// Pushes FeedbackScreen with a slide-up transition — clean, no jarring cuts
+  /// Passes the existing ConversationViewModel into the new route so it stays in scope
+  void _navigateToFeedback(BuildContext context) {
+    final viewModel = context.read<ConversationViewModel>();
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ChangeNotifierProvider.value(
+              value: viewModel,
+              child: const FeedbackScreen(),
+            ),
+        transitionDuration: const Duration(milliseconds: 380),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1), // enters from bottom
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          );
+        },
+      ),
+    );
   }
 
   /// Resets idle timer and returns to static pig image
@@ -122,10 +149,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
               return Column(
                 children: [
-                  // Top section with status
+                  // Top section: status text centered, feedback icon pinned to the far right
+                  // SizedBox(width: 48) on the left mirrors the icon button width so the text stays truly centered
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: _buildStatusText(viewModel),
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 48),
+                        Expanded(child: _buildStatusText(viewModel)),
+                        IconButton(
+                          icon: Icon(Icons.info_outline, color: Colors.black45, size: 28),
+                          tooltip: 'Share Feedback',
+                          onPressed: () => _navigateToFeedback(context),
+                        ),
+                      ],
+                    ),
                   ),
 
                   // Pig animation/image - changes based on state

@@ -155,6 +155,16 @@ class SessionRepository {
     return _currentContext!.messageCount > 1;
   }
 
+  /// Submits anonymous feedback to Firestore, attaching the current session context as metadata
+  /// Throws on error so ConversationViewModel can surface the failure to the user
+  Future<void> submitFeedback(String text) async {
+    await _firestoreService.submitFeedback(
+      text: text,
+      sessionId: currentSessionId,
+      messageCount: messageCount,
+    );
+  }
+
   /// Gets a human-readable summary of the current session
   String getSessionSummary() {
     if (_currentContext == null) {

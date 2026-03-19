@@ -195,9 +195,30 @@ class RAGService {
 
     try {
 
-      // Step 1: Find relevant menu context using semantic search
-      // This retrieves the top K most semantically similar chunks to the user's query
-      final relevantContext = await _findRelevantContext(userMessage);
+      // Step 1: Build a context-enriched search query before embedding.
+      // The raw userMessage alone loses context for vague follow-ups like "what about the price?"
+      // or "is it good?" — without knowing what "it" refers to, the embedding lands on the wrong chunks.
+      // We prepend the last two user turns from history so the embedding carries the topic being discussed.
+      // Example: "user: tell me about shoyu \n user: what's the price?" embeds far better than just "what's the price?"
+      String searchQuery = userMessage;
+      if (conversationHistory != null && conversationHistory.length > 1) {
+        final recentUserTurns = conversationHistory
+            .where((m) => m['role'] == 'user')
+            .toList();
+        // Take up to the last 2 user messages (excluding the current one which is already in userMessage)
+        final contextTurns = recentUserTurns.length > 2
+            ? recentUserTurns.sublist(recentUserTurns.length - 2)
+            : recentUserTurns;
+        if (contextTurns.isNotEmpty) {
+          final contextPrefix = contextTurns.map((m) => m['content'] as String).join('\n');
+          searchQuery = '$contextPrefix\n$userMessage';
+          Logger.log('RAG: Context-enriched search query: "$searchQuery"');
+        }
+      }
+
+      // Step 2: Find relevant menu context using semantic search on the enriched query
+      // This retrieves the top K most semantically similar chunks
+      final relevantContext = await _findRelevantContext(searchQuery);
 
       // Critical Error Handling: If context search failed with a system error (e.g., App Check disabled),
       // report it immediately instead of hallucinating an answer.

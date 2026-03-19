@@ -17,4 +17,12 @@ class AppConfig {
   // Embedding model for semantic search
   // text-embedding-004 is the latest Vertex AI model (768 dimensions, best quality)
   static const String embeddingModel = 'text-embedding-004';
+
+  // Silence detection for auto-send
+  // Sound level (dB) above which we consider the user to be actively speaking
+  static const double speechDetectedThreshold = 1.5;
+  // Sound level (dB) below which we consider the user to have stopped speaking
+  static const double silenceSoundThreshold = 0.5;
+  // How long silence must last before auto-sending — gives user time to think mid-sentence
+  static const Duration silenceAutoSendDelay = Duration(milliseconds: 2700);
 }

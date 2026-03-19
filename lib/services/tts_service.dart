@@ -88,14 +88,16 @@ class TTSService {
       // Store the completion callback
       _currentOnComplete = onComplete;
 
-      Logger.log('TTS: Starting speech #$_speechCount (${text.length} characters)');
+      // Strip emojis before speaking — TTS engines read them aloud as descriptions (e.g., "pig face")
+      final cleanText = _stripEmojis(text);
+      Logger.log('TTS: Starting speech #$_speechCount (${cleanText.length} characters)');
 
       // Check platform max length (Android-specific safety check)
       if (Platform.isAndroid) {
         try {
           final maxLength = await _flutterTts.getMaxSpeechInputLength;
-          if (maxLength != null && text.length > maxLength) {
-            Logger.log('WARNING: TTS text length (${text.length}) exceeds platform max ($maxLength). May be truncated.');
+          if (maxLength != null && cleanText.length > maxLength) {
+            Logger.log('WARNING: TTS text length (${cleanText.length}) exceeds platform max ($maxLength). May be truncated.');
           }
         } catch (e) {
           // getMaxSpeechInputLength might not be available on all devices
@@ -106,14 +108,14 @@ class TTSService {
       // For very long text, flutter_tts might fail - add safety timeout
       _isSpeaking = true;
       _speechStartTime = DateTime.now(); // Track start time for analytics
-      await _flutterTts.speak(text);
+      await _flutterTts.speak(cleanText);
 
       // Calculate a conservative timeout based on actual speech rate
       // At 0.5 speech rate with 1.2 pitch: approximately 4-5 characters per second
       // Add 20s buffer for iOS/Android TTS engine initialization delays and sentence pausing
       // Example: 300 chars = 20 + (300/4) = 95 seconds (very safe)
       //          150 chars = 20 + (150/4) = 57 seconds (typical response)
-      final timeoutDuration = Duration(seconds: 20 + (text.length ~/ 4));
+      final timeoutDuration = Duration(seconds: 20 + (cleanText.length ~/ 4));
 
       // Safety fallback: if speech doesn't complete within reasonable time
       Future.delayed(timeoutDuration, () {
@@ -144,6 +146,21 @@ class TTSService {
     } catch (e) {
       Logger.error('TTS stop error', e, null);
     }
+  }
+
+  /// Removes emoji characters from text so TTS reads words only, not descriptions like "pig face"
+  /// Covers the main Unicode emoji blocks (emoticons, symbols, transport, misc)
+  String _stripEmojis(String text) {
+    return text.replaceAll(
+      RegExp(
+        r'[\u{1F300}-\u{1FAFF}]|'  // Misc symbols, emoticons, transport, supplemental
+        r'[\u{2600}-\u{27BF}]|'    // Misc symbols and dingbats
+        r'[\u{FE00}-\u{FE0F}]|'    // Variation selectors (emoji modifiers)
+        r'[\u{1F000}-\u{1F02F}]',  // Mahjong / domino tiles
+        unicode: true,
+      ),
+      '',
+    );
   }
 
   /// Dispose resources and reset usage counter

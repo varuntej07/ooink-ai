@@ -5,6 +5,7 @@ import '../services/tts_service.dart';
 import '../services/rag_service.dart';
 import '../repositories/session_repository.dart';
 import '../utils/logger.dart';
+import '../config/app_config.dart';
 
 /// Enum representing the different states of conversation
 enum ConversationState {
@@ -32,6 +33,11 @@ class ConversationViewModel extends ChangeNotifier {
   Timer? _inactivityTimer;
   static const Duration _sessionTimeout = Duration(seconds: 90);
 
+  // Silence detection state for auto-send
+  Timer? _silenceTimer;
+  bool _speechStarted = false;      // Flips true once the user's voice level crosses the speech threshold
+  bool _silenceCountdownActive = false; // True during the 2.7s countdown before auto-send fires
+
   ConversationViewModel({
     required SpeechToTextService speechService,
     required TTSService ttsService,
@@ -52,6 +58,8 @@ class ConversationViewModel extends ChangeNotifier {
   bool get isProcessing => _state == ConversationState.processing;
   bool get isSpeaking => _state == ConversationState.speaking;
   bool get hasError => _state == ConversationState.error;
+  // True while the 2.7s silence countdown is running — View uses this to show animated progress bar
+  bool get silenceCountdownActive => _silenceCountdownActive;
 
   // Initialize all services including RAG
   Future<void> initialize() async {
@@ -98,6 +106,10 @@ class ConversationViewModel extends ChangeNotifier {
       return;
     }
 
+    // Reset silence detection state fresh for each new listening session
+    _cancelSilenceCountdown();
+    _speechStarted = false;
+
     _updateState(ConversationState.listening);
     _userInput = '';
     _aiResponse = ''; // Clear previous response so user can see their new question
@@ -109,10 +121,51 @@ class ConversationViewModel extends ChangeNotifier {
           _userInput = recognizedText;
           notifyListeners();
         },
+        onSoundLevel: _onSoundLevel,
       );
     } catch (e, stackTrace) {
       Logger.error('Failed to start speech recognition', e, stackTrace);
       _setError('Failed to start listening: $e');
+    }
+  }
+
+  /// Receives continuous sound level updates (dB) from the STT engine while listening
+  /// Drives the auto-send silence detection: waits for speech to start, then auto-sends after 2.5s of quiet
+  void _onSoundLevel(double level) {
+    if (_state != ConversationState.listening) return;
+
+    if (level >= AppConfig.speechDetectedThreshold) {
+      // User is actively speaking — mark speech started and cancel any running countdown
+      _speechStarted = true;
+      if (_silenceCountdownActive) {
+        _cancelSilenceCountdown();
+      }
+    } else if (level < AppConfig.silenceSoundThreshold && _speechStarted && !_silenceCountdownActive) {
+      // Sound dropped below silence threshold after speech was detected — start the auto-send countdown
+      _silenceCountdownActive = true;
+      notifyListeners(); // Triggers the UI countdown animation
+
+      _silenceTimer = Timer(AppConfig.silenceAutoSendDelay, () {
+        // Only auto-send if we're still listening and actually captured something
+        if (_state == ConversationState.listening && _userInput.isNotEmpty) {
+          Logger.log('STT: Auto-sending after ${AppConfig.silenceAutoSendDelay.inMilliseconds}ms of silence');
+          stopListeningAndProcess();
+        } else {
+          // No speech captured (user was silent from the start) — just reset quietly
+          _cancelSilenceCountdown();
+          _speechStarted = false;
+        }
+      });
+    }
+  }
+
+  /// Cancels the silence countdown timer and clears the active flag — used on speech resume or manual cancel
+  void _cancelSilenceCountdown() {
+    _silenceTimer?.cancel();
+    _silenceTimer = null;
+    if (_silenceCountdownActive) {
+      _silenceCountdownActive = false;
+      notifyListeners();
     }
   }
 
@@ -121,6 +174,10 @@ class ConversationViewModel extends ChangeNotifier {
     if (_state != ConversationState.listening) {
       return;
     }
+
+    // Always clean up silence detection before processing
+    _cancelSilenceCountdown();
+    _speechStarted = false;
 
     await _speechService.stopListening();
 
@@ -137,6 +194,8 @@ class ConversationViewModel extends ChangeNotifier {
   // Cancel current listening session
   Future<void> cancelListening() async {
     if (_state == ConversationState.listening) {
+      _cancelSilenceCountdown();
+      _speechStarted = false;
       await _speechService.cancel();
       _updateState(ConversationState.idle);
       _userInput = '';
@@ -217,6 +276,8 @@ class ConversationViewModel extends ChangeNotifier {
     _speechService.cancel();
     _ttsService.stop();
     _inactivityTimer?.cancel();
+    _cancelSilenceCountdown();
+    _speechStarted = false;
     _sessionRepository.clearSession();
     _updateState(ConversationState.idle);
     _userInput = '';
@@ -246,6 +307,7 @@ class ConversationViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _inactivityTimer?.cancel();      // Cancel timer before disposing
+    _silenceTimer?.cancel();         // Cancel silence detection timer
     _sessionRepository.dispose();   // Clean up session repository
     _speechService.dispose();
     _ttsService.dispose();

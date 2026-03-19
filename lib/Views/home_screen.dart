@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../ViewModels/conversation_vm.dart';
+import '../config/app_config.dart';
 
 /// Displays pig bot images with state-based animations:
 /// - Idle/Listening/Processing: static pig-bot-idle.png
@@ -175,6 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Container(
+                      constraints: const BoxConstraints(maxHeight: 180),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -191,14 +193,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      child: Text(
-                        viewModel.aiResponse,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade900,
+                      // Scrollable so the full response is readable without clipping the layout
+                      child: SingleChildScrollView(
+                        child: Text(
+                          viewModel.aiResponse,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade900,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -223,6 +228,32 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         textAlign: TextAlign.center,
                       ),
+                    ),
+                  ),
+
+                // Silence countdown progress bar — animates from left to right over 2.7s
+                // Appears above the button when auto-send is counting down after user stops speaking
+                if (viewModel.isListening && viewModel.silenceCountdownActive)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                    child: Column(
+                      children: [
+                        TweenAnimationBuilder<double>(
+                          // New key each time countdown activates so animation restarts cleanly
+                          key: ValueKey('countdown_${viewModel.silenceCountdownActive}'),
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: AppConfig.silenceAutoSendDelay,
+                          builder: (context, value, child) => ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: value,
+                              minHeight: 6,
+                              color: Colors.orange.shade500,
+                              backgroundColor: Colors.orange.shade100,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -324,6 +355,11 @@ class _HomeScreenState extends State<HomeScreen> {
       buttonText = 'Tap to Talk';
       onPressed = () => viewModel.startListening();
       buttonColor = Colors.pink;
+    } else if (viewModel.isListening && viewModel.silenceCountdownActive) {
+      // Countdown is running — let user cancel it and keep speaking
+      buttonText = 'Tap to Cancel';
+      onPressed = () => viewModel.cancelListening();
+      buttonColor = Colors.orange.shade700;
     } else if (viewModel.isListening) {
       buttonText = 'Stop & Send';
       onPressed = () => viewModel.stopListeningAndProcess();

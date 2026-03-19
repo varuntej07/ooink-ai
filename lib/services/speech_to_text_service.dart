@@ -21,11 +21,14 @@ class SpeechToTextService {
     return _isInitialized;
   }
 
-  // Start listening to user speech and invoked [onResult] callback receives the recognized text
-  // Automatically reinitializes STT engine every 30 sessions to prevent Android/iOS recognition degradation
+  // Start listening to user speech
+  // [onResult] receives recognized text — called on every partial result for real-time display
+  // [onSoundLevel] optional callback with dB sound level updates — used by ViewModel for silence detection
+  // Automatically re-initializes STT engine every 30 sessions to prevent Android/iOS recognition degradation
   // This is critical for all-day kiosk operation where the same STT instance may process 100+ customer interactions
   Future<void> startListening({
     required Function(String) onResult,
+    Function(double)? onSoundLevel,
   }) async {
     if (!_isInitialized) {
       final initialized = await initialize();
@@ -51,13 +54,14 @@ class SpeechToTextService {
     Logger.log('STT: Starting listening session #$_sessionCount');
 
     await _speechToText.listen(
-      onResult: (result) {
-        if (result.finalResult) {
-          onResult(result.recognizedWords);
-        }
-      },
+      // Fire on every partial result so UI shows live transcription as user speaks
+      onResult: (result) => onResult(result.recognizedWords),
+      // Route sound level updates to ViewModel for silence detection
+      onSoundLevelChange: onSoundLevel,
       listenOptions: SpeechListenOptions(
-        listenMode: ListenMode.confirmation,
+        // Dictation mode: engine keeps listening until we explicitly stop it
+        // This gives us full control over when to cut off, rather than the engine deciding
+        listenMode: ListenMode.dictation,
       ),
     );
   }

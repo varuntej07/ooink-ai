@@ -341,7 +341,7 @@ class _FeedbackScreenState extends State<FeedbackScreen>
                               ),
                             )
                           : const Text(
-                              'Send to Pig',
+                              'Improve Pig',
                               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                     ),
@@ -350,6 +350,35 @@ class _FeedbackScreenState extends State<FeedbackScreen>
 
                 const SizedBox(height: 24),
               ],
+            ),
+          ),
+        ),
+
+        // Developer credit pinned at the very bottom — always visible, never scrolls away
+        // IgnorePointer blocks all touch so users can't accidentally open a browser
+        IgnorePointer(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Crafted with love by ',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  ),
+                  TextSpan(
+                    text: 'varuntej.dev',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.pink.shade300,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.pink.shade200,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ),

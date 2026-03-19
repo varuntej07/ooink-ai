@@ -116,7 +116,6 @@
   "menu_categories": [
     {
       "category": "Signature Ramen Bowls",
-      "description": "Ooink's mala-forward ramen features fresh daily-made noodles in rich, complex broths. All ramen comes with soup, noodles, char siu (roast pork), bamboo shoots, aji-tamago (marinated soft-boiled egg), and scallion. Most feature Ooink's signature mala (spicy, numbing) flavor profile.",
       "base_price_range": "$17-20+",
       "preparation_time": "10-15 minutes",
       "noodle_notes": "Thin, bouncy, chewy noodles made fresh daily. Perfect texture for soaking up rich broths.",
@@ -132,6 +131,7 @@
           "spice_level": "mild - extra hot (adjustable 1-4 scale)",
           "dietary_options": [],
           "allergens": ["eggs", "soy", "wheat", "pork", "garlic", "sesame"],
+          "toppings": ["2 slices of pork", "scallion", "bamboo shoots", "aji-tamago", "garlic chips"],
           "customizations": [
             "spice_level_1_to_4",
             "extra_toppings_for_charge"
@@ -165,6 +165,7 @@
           "spice_level": "Medium-hot (adjustable 1-4 scale)",
           "dietary_options": [],
           "allergens": ["eggs", "soy", "wheat", "pork"],
+          "toppings": ["2 slices of pork", "scallion", "bamboo shoots", "aji-tamago"],
           "customizations": [
             "spice_level_1_to_4",
             "noodle_firmness",
@@ -195,6 +196,7 @@
           "spice_level": "None - not spicy",
           "dietary_options": [],
           "allergens": ["eggs", "soy", "wheat", "pork", "garlic", "sesame"],
+          "toppings": ["2 slices of pork", "scallion", "bamboo shoots", "aji-tamago", "garlic chips"],
           "customizations": [
             "noodle_firmness",
             "extra_toppings_for_charge"
@@ -223,7 +225,8 @@
           "flavor_profile": "Savory, umami-rich, light, clean, subtle",
           "spice_level": "None",
           "dietary_options": [],
-          "allergens": ["eggs", "soy", "wheat"],
+          "allergens": ["eggs", "soy", "wheat", "anchovies", "chicken fat"],
+          "toppings": ["2 slices of pork", "scallion", "bamboo shoots", "aji-tamago / half-egg"],
           "customizations": [
             "noodle_firmness",
             "extra_toppings_for_charge"
@@ -250,7 +253,8 @@
           "flavor_profile": "Savory, bright citrus (yuzu), light, clean, slightly tangy",
           "spice_level": "None",
           "dietary_options": [],
-          "allergens": ["eggs", "soy", "wheat"],
+          "allergens": ["eggs", "soy", "wheat", "anchovies", "chicken fat"],
+          "toppings": ["2 slices of pork", "scallion", "bamboo shoots", "aji-tamago / half-egg"],
           "customizations": [
             "noodle_firmness",
             "extra_toppings_for_charge"
@@ -274,7 +278,9 @@
           "flavor_profile": "Mala spice, savory, numbing, Sichuan-inspired",
           "spice_level": "Medium-hot (adjustable 1-4)",
           "dietary_options": [],
-          "allergens": ["eggs", "soy", "wheat", "pork"],
+          "allergens": ["soy", "wheat", "pork"],
+          "toppings": ["scallion", "zacai", "Tofu mixed with some ground pork"],
+          "doesn't have": ["egg"],
           "customizations": [
             "spice_level_1_to_4",
             "noodle_firmness",
@@ -297,7 +303,9 @@
           "flavor_profile": "Miso, mala spice, earthy mushrooms, complex",
           "spice_level": "Medium",
           "dietary_options": ["vegetarian", "can_be_made_vegan"],
-          "allergens": ["soy", "wheat", "possible nuts in some ingredients", "contains nuts"],
+          "allergens": ["soy", "wheat", "possible nuts in some ingredients", "contains nuts", 'dairy'],
+          "toppings": ["scallion", "wooded mushrooms", "corn butter", "tofu skin", "bakchoi", "seaweed", "corn"],
+          "doesn't have": ["egg", "pork"],
           "customizations": [
             "spice_level",
             "extra_tofu",
@@ -328,6 +336,8 @@
           "spice_level": "No-spicy",
           "dietary_options": [],
           "allergens": ["soy", "wheat", "diary"],
+          "toppings": ["scallion", "wooded mushrooms", "corn butter", "tofu skin", "bakchoi", "seaweed", "corn"],
+          "doesn't have": ["egg", "pork"],
           "customizations": [
             "noodle_firmness",
             "extra_toppings_for_charge"
@@ -344,6 +354,8 @@
           "spice_level": "None",
           "dietary_options": [""],
           "allergens": ["soy", "wheat"],
+          "toppings": ["scallion", "burnt onions"],
+          "doesn't have": ["pork" "chicken piece inside it"],
           "customizations": [
             "noodle_firmness",
             "extra protein_substitutions",
@@ -371,9 +383,10 @@
           "description": "Chef Ooi's Malaysian heritage showcased in this standout dish. Crispy-fried chicken marinated with fresh chili, galangal, lemongrass, turmeric, garlic, and curry leaves. Perfectly balanced - crispy exterior with moist, flavorful interior. Addictive Malaysian spice profile.",
           "flavor_profile": "Savory, spicy, aromatic, perfectly balanced crispy-juicy",
           "spice_level": "Medium-hot",
-          "allergens": ["soy", "wheat", "garlic"],
+          "allergens": ["soy", "garlic"],
           "customizations": [
-            "none"
+            "none",
+            "Chicken is already marinated"
           ],
           "notes": "Customers call this 'the best chicken wings in Seattle' and a must-try. Often sells out and takes 12 mins to cook",
           "review_highlights": [
@@ -608,7 +621,7 @@
     },
     {
       "question": "Do you have delivery or takeout?",
-      "answer": "Yes! Order online through ooinkramen.com, DoorDash, or Uber Eats for delivery or pickup. Fremont hours for takeout: Sun-Thu 5:00 PM-9:30 PM, Fri-Sat 5:00 PM-11:00 PM. You can also order retail ramen kits online from shopooink.com.",
+      "answer": "Yes! Order online through ooinkramen.com, DoorDash, or Uber Eats for delivery or pickup. Fremont hours for takeout: Sun-Thu 5:00 PM-9:30 PM, Fri-Sat 5:00 PM-11:00 PM. You can also order retail ramen kits online from shopooink.com. we dont take phone call orders",
       "related_items": []
     },
     {
@@ -716,7 +729,7 @@
       "address": "3630 Stone Way N, Seattle, WA 98103",
       "phone": "(206) 588-2035",
       "zip_code": "98103",
-      "neighborhood": "Fremont/Wallingford",
+      "neighborhood": "Fremont",
       "hours": {
         "sunday_thursday": "5:00 PM - 9:30 PM",
         "friday_saturday": "5:00 PM - 11:00 PM"

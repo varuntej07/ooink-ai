@@ -18,6 +18,7 @@ const generateEmbedding = onCall(
     timeoutSeconds: 45,
     maxInstances: 10,
     cors: true,
+    consumeAppCheckToken: false,  // Disable App Check validation
   },
   async (request) => {
     console.log('🚀 Cloud Function triggered - generateEmbedding');

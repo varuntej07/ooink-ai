@@ -42,7 +42,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBWTa8Ps2nWUaZuSGQDPrTlQ7u-gJ_xcxA',
-    appId: '1:352871490538:android:1c089c26231437bc374893',
+    appId: '1:352871490538:android:65e2c41e89fcde5e374893',
     messagingSenderId: '352871490538',
     projectId: 'ooinkai',
     storageBucket: 'ooinkai.firebasestorage.app',
@@ -50,11 +50,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBzUhZCYZaN1RWMaBebNE3WR3Ime8wq5IM',
-    appId: '1:352871490538:ios:e22ac75410110472374893',
+    appId: '1:352871490538:ios:e994d22577365eac374893',
     messagingSenderId: '352871490538',
     projectId: 'ooinkai',
     storageBucket: 'ooinkai.firebasestorage.app',
-    iosBundleId: 'com.ooinkramen.ooink',
+    iosBundleId: 'com.ooinkramen.ai',
   );
 
   static const FirebaseOptions web = FirebaseOptions(

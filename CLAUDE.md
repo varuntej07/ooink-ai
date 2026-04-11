@@ -1,5 +1,5 @@
 # Project Overview
-Customers waiting outside Ooink during busy hours (lunch and dinner) have limited information about the menu. The small restaurant size creates wait times, and potential customers may leave without trying the food if they cannot quickly understand what Ooink offers. 
+Customers waiting outside Ooink Ramen Capitol Hill during busy hours (lunch and dinner) have limited information about the menu. The small restaurant size creates wait times, and potential customers may leave without trying the food if they cannot quickly understand what Ooink offers. 
 An AI assistant positioned outside answers basic menu questions, educates customers about specialty items, and creates a memorable brand interaction that generates social media content. 
 Do not worry about security as this app just has publicly available restaurant's menu and are building a conversational AI Pig that answers user queries sitting in front of the restaurant in a tablet
 
@@ -8,8 +8,16 @@ MVVM Architecture: Strict separation - ViewModels handle business logic, Views h
 No coupling: ViewModels should not depend on each other unless absolutely necessary
 Do not use mix of other state management methods like setState(). This project strictly uses only 'Provider' state management
 
+# AI / Conversation Design
+- RAG pipeline: user query → embedding (Cloud Function) → cosine similarity against menu chunks → threshold check
+- Above threshold (≥ 0.25): RAG prompt — menu context injected, Pig answers from it
+- Below threshold (< 0.25): Persona prompt — no menu context, Pig handles greetings, jokes, and small talk naturally
+- Both prompts live in `lib/services/rag_service.dart`
+- Pig is warm, playful, ramen-obsessed. Social questions should get in-character responses, not deflections
+- Only hard deflect truly off-topic things: math, politics, coding, other restaurants
+
 # Workflow
-- Be sure to typecheck when you’re done making a series of code changes
+- Be sure to typecheck when you're done making a series of code changes
 - Always refer to the best practices and guidelines provided in the latest documentation of certain packages or libraries
 
 # Rules

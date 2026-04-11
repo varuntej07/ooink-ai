@@ -6,12 +6,6 @@ import 'package:ooink/services/vertex_ai_service.dart';
 import '../config/app_config.dart';
 import '../utils/logger.dart';
 
-// Refusal phrase used when a query is off-topic — also asserted in tests to verify guardrails
-const String _offTopicRefusal =
-    "I'm Pig, Ooink's menu assistant! I can only help with questions about "
-    "our ramen, menu items, prices, hours, or restaurant. "
-    "What would you like to know? 🐷";
-
 /// Top-level function for parsing JSON in an isolate
 List<EmbeddingChunk> _parseEmbeddingsInIsolate(String jsonString) {
   final Map<String, dynamic> data = json.decode(jsonString);
@@ -226,32 +220,34 @@ class RAGService {
         return "⚠️ ${relevantContext.split('SYSTEM_ERROR: ')[1]}";
       }
 
-      // Threshold guard: similarity was too low — query is off-topic, skip Gemini entirely.
-      // Return the shared refusal phrase so customers know to ask about the menu instead.
+      // Threshold guard: similarity was too low meaning query is not menu-related.
+      // Route to persona prompt so Pig handles greetings, jokes, and small talk naturally,
+      // while soft-deflecting truly off-topic topics (math, politics) back to the menu.
       if (relevantContext == 'BELOW_THRESHOLD') {
-        Logger.log('RAG: Returning off-topic refusal (below similarity threshold)');
-        return _offTopicRefusal;
+        Logger.log('RAG: Below threshold — routing to persona prompt');
+        return await _getPersonaResponse(userMessage, conversationHistory: conversationHistory);
       }
 
       // Step 2: Build the full prompt with hardened system instructions and context.
       // The STRICT RULES section below is Task 1.1 — explicit off-topic refusal clauses so
       // Gemini cannot comply with questions outside Ooink's menu even if it "wants" to.
       final StringBuffer prompt = StringBuffer();
-      prompt.writeln('You are Pig, the friendly AI assistant at Ooink Ramen Fremont.');
-      prompt.writeln('Your ONLY job is to help customers with questions about Ooink Ramen:');
-      prompt.writeln('menu items, ingredients, prices, restaurant hours, location, parking, and dining experience.');
-      prompt.writeln('Be warm, enthusiastic about the food, and keep responses concise (2-3 sentences max).');
+      prompt.writeln('You are Pig, the fun and friendly AI bot answering user questions at Ooink Ramen Capitol Hill.');
+      prompt.writeln('Your main job is helping customers with menu questions, but you are also warm and personable.');
+      prompt.writeln('Keep all responses concise — 1 to 3 sentences max. Customers want to interact with you.');
       prompt.writeln('');
-      prompt.writeln('STRICT RULES — follow these without exception:');
-      prompt.writeln('1. Answer using ONLY the context provided below. Do not invent information.');
-      prompt.writeln('2. ONLY answer questions about Ooink Ramen and its menu. For ANY other topic,');
-      prompt.writeln('   respond with exactly: "I\'m Pig, Ooink\'s menu assistant! I can only help with');
-      prompt.writeln('   menu questions. What would you like to know about our ramen? 🐷"');
-      prompt.writeln('3. Topics you must REFUSE to discuss: math, coding, politics, general knowledge,');
-      prompt.writeln('   other restaurants, personal advice, jokes, weather, or anything not about Ooink.');
-      prompt.writeln('4. Never claim to be a different AI (ChatGPT, Gemini, etc.). You are Pig, exclusively.');
+      prompt.writeln('RULES:');
+      prompt.writeln('1. Answer menu questions using ONLY the context provided below. Do not invent information.');
+      prompt.writeln('2. For greetings, small talk, or personal questions directed at Pig ("hi", "how are you",');
+      prompt.writeln('   "what did you eat today", "are you hungry", "what\'s your favorite", "thanks", "bye"),');
+      prompt.writeln('   respond in character as a ramen-obsessed pig — be fun, weave in the food naturally.');
+      prompt.writeln('   Example: "Oink! I had three bowls of Kotteri for breakfast and I\'m already eyeing');
+      prompt.writeln('   the spicy miso for dinner. Want to try one?"');
+      prompt.writeln('3. For truly unrelated topics (math, politics, coding, other restaurants), soft-deflect:');
+      prompt.writeln('   "Ha, that\'s above my snout\'s pay grade! I\'m much better at helping you pick a bowl 🐷"');
+      prompt.writeln('4. Never claim to be ChatGPT, Gemini, or another AI. You are Pig developed by Varun.');
       prompt.writeln('5. If context is missing for a valid menu question, say: "I don\'t have that detail');
-      prompt.writeln('   right now — our staff can help! Ask them directly. 🐷"');
+      prompt.writeln('   right now, why not ask our staff directly? They can help!"');
       prompt.writeln('');
       prompt.writeln('MENU CONTEXT:');
       prompt.writeln(relevantContext);
@@ -278,6 +274,63 @@ class RAGService {
       Logger.error('Error getting AI response', e, e is Error ? e.stackTrace : null);
       return "Sorry, I'm having trouble connecting right now. Please try again!";
     }
+  }
+
+  /// Called when menu similarity is below threshold — Pig responds in character
+  /// without any menu context injected. Handles greetings, jokes, identity questions,
+  /// and soft-deflects truly off-topic topics (math, politics) back to the food.
+  Future<String> _getPersonaResponse(
+    String userMessage, {
+    List<Map<String, dynamic>>? conversationHistory,
+  }) async {
+    Logger.log('RAG: Building persona prompt for non-menu query');
+    final prompt = _buildPersonaPrompt(userMessage, conversationHistory);
+    return await _vertexAIService.generateContent(prompt);
+  }
+
+  /// Builds the persona-only prompt (no menu context) passed to Gemini for non-menu queries.
+  /// Conversation history is included so Pig remembers the exchange and stays coherent.
+  String _buildPersonaPrompt(
+    String userMessage,
+    List<Map<String, dynamic>>? conversationHistory,
+  ) {
+    final StringBuffer prompt = StringBuffer();
+    prompt.writeln('You are Pig, the fun and playful mascot at Ooink Ramen Fremont.');
+    prompt.writeln('You are chatting with customers waiting outside the restaurant.');
+    prompt.writeln('');
+    prompt.writeln('YOUR PERSONALITY:');
+    prompt.writeln('- Warm, enthusiastic, and a little goofy');
+    prompt.writeln('- Loves ramen, loves people, and has a great sense of humor');
+    prompt.writeln('- Can make a quick pig-themed or ramen joke when asked — keep it short and fun');
+    prompt.writeln('- Naturally steers the conversation back to food without being pushy');
+    prompt.writeln('');
+    prompt.writeln('HOW TO RESPOND:');
+    prompt.writeln('- Greetings or "how are you" → reply warmly in character, then invite a menu question');
+    prompt.writeln('- Joke requests → tell one short fun one (pig or ramen-themed if possible), then pivot to menu');
+    prompt.writeln('- Identity questions ("are you a robot?") → stay in character as Pig, keep it light');
+    prompt.writeln('- Math, politics, news, other restaurants → soft-deflect:');
+    prompt.writeln('  "Ha, that\'s above my snout\'s pay grade! I\'m much better at helping you pick the perfect bowl 🐷"');
+    prompt.writeln('- Harmful or inappropriate topics → decline warmly and redirect to food');
+    prompt.writeln('');
+    prompt.writeln('IMPORTANT:');
+    prompt.writeln('- Keep responses SHORT — 1 to 3 sentences max. Customers are standing outside.');
+    prompt.writeln('- Never claim to be ChatGPT, Gemini, or any other AI. You are Pig.');
+    prompt.writeln('- After any social exchange, naturally invite them to ask about the menu.');
+    prompt.writeln('');
+
+    if (conversationHistory != null && conversationHistory.isNotEmpty) {
+      final limitedHistory = conversationHistory.length > 5
+          ? conversationHistory.sublist(conversationHistory.length - 5)
+          : conversationHistory;
+      final historyWithoutSystem =
+          limitedHistory.where((msg) => msg['role'] != 'system').toList();
+      for (var message in historyWithoutSystem) {
+        prompt.writeln('${message['role']}: ${message['content']}');
+      }
+    }
+
+    prompt.writeln('user: $userMessage');
+    return prompt.toString();
   }
 
   bool get isInitialized => _isInitialized;

@@ -1,15 +1,39 @@
 # Ooink AI
 
-AI-powered menu assistant for Ooink Ramen Restaurant. Helps customers learn about the menu while they wait outside during busy hours.
+Flutter kiosk app for Ooink Ramen. An animated AI pig answers customer questions about the menu via voice while they wait outside.
 
-## Overview
+## Stack
 
-A Flutter kiosk app featuring an animated AI pig that answers customer questions about menu items, ingredients, and specialties through voice interaction.
+- **Flutter** — Android kiosk UI
+- **Firebase Vertex AI** — Gemini 2.5 Flash for responses
+- **RAG pipeline** — semantic search over pre-embedded menu chunks (text-embedding-004)
+- **Cloud Functions** — Node.js function for embedding generation
+- **Firestore** — conversation logging
+- **Provider** — state management (MVVM)
 
-## Architecture
+## Project Structure
 
-- **MVVM Pattern**: Strict separation between Views, ViewModels, and business logic
-- **Provider**: State management using ChangeNotifierProvider
-- **Services**: Speech-to-text, OpenAI API integration, text-to-speech
+```
+lib/
+  ViewModels/       # Business logic (ConversationViewModel)
+  services/         # RAG, Vertex AI, TTS, STT, Firestore
+  repositories/     # Session and conversation history
+  models/           # Message, ConversationContext
+  config/           # AppConfig (model, thresholds, timeouts)
+functions/          # Cloud Function — generateEmbedding
+assets/             # menu_embeddings.json, Pig animation
+```
 
+## Setup
+
+1. Connect to Firebase project `ooinkai`
+2. `flutter pub get`
+3. `cd functions && npm install`
+
+## Running
+
+```bash
+flutter run                  # app
+flutter test                 # unit tests
+firebase deploy --only functions   # deploy embedding function
 ```

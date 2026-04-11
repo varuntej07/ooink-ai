@@ -134,11 +134,12 @@ void main() {
       expect(result, equals('On-topic response'));
     });
 
-    test('opposite direction vectors → below threshold, Gemini skipped', () async {
+    test('opposite direction vectors → below threshold, Gemini called with persona prompt', () async {
       // The query embedding points opposite to all chunks — clearly off-topic.
-      // Cosine similarity = -1.0 → below threshold → off-topic refusal, no Gemini call.
+      // Cosine similarity = -1.0 → below threshold → persona route, Gemini IS called.
       final fakeAI = _FakeVertexAIService(
         embeddingToReturn: [-1.0, 0.0, 0.0],
+        responseToReturn: 'Oink! That\'s above my snout\'s pay grade — what can I help you with from the menu? 🐷',
       );
       final svc = _ragWithChunks(
         [_chunk('1', 'Tonkotsu Ramen info', [1.0, 0.0, 0.0])],
@@ -146,10 +147,9 @@ void main() {
       );
 
       final result = await svc.getResponse('anything unrelated');
-      // Gemini must NOT have been called
-      expect(fakeAI.invokeModelCallCount, equals(0));
-      // Response should contain the refusal phrase
-      expect(result, contains("Pig"));
+      // Gemini IS called via persona route — not skipped
+      expect(fakeAI.invokeModelCallCount, equals(1));
+      // Response should be a friendly persona reply
       expect(result, contains("menu"));
     });
   });
@@ -158,9 +158,12 @@ void main() {
   group('RAGService — Task 1.3: off-topic guardrail boundary tests', () {
     /// Helper that returns the pig's response to [query] when the query embedding
     /// points opposite to all chunks (simulating a fully off-topic question).
+    /// The fake AI returns a soft-deflection response simulating what Gemini would say
+    /// when given the persona prompt for truly off-topic queries.
     Future<String> offTopicResponse(String query) async {
       final fakeAI = _FakeVertexAIService(
         embeddingToReturn: [-1.0, 0.0, 0.0], // always below threshold
+        responseToReturn: 'Ha, that\'s above my snout\'s pay grade! I\'m much better at answering menu questions 🐷',
       );
       final svc = _ragWithChunks(
         [_chunk('1', 'menu text', [1.0, 0.0, 0.0])],
@@ -183,17 +186,20 @@ void main() {
       return svc.getResponse(query);
     }
 
-    test('a: off-topic "What is 2 + 2?" → refusal phrase, no Gemini call', () async {
-      final fakeAI = _FakeVertexAIService(embeddingToReturn: [-1.0, 0.0, 0.0]);
+    test('a: off-topic "What is 2 + 2?" → persona route, Gemini called, soft deflection returned', () async {
+      final fakeAI = _FakeVertexAIService(
+        embeddingToReturn: [-1.0, 0.0, 0.0],
+        responseToReturn: 'Ha, that\'s above my snout\'s pay grade! I\'m much better at answering menu questions 🐷',
+      );
       final svc = _ragWithChunks(
         [_chunk('1', 'menu', [1.0, 0.0, 0.0])],
         fakeAI: fakeAI,
       );
       final result = await svc.getResponse('What is 2 + 2?');
-      expect(fakeAI.invokeModelCallCount, 0,
-          reason: 'Gemini must not be called for off-topic queries');
+      expect(fakeAI.invokeModelCallCount, 1,
+          reason: 'Gemini must be called via persona route for off-topic queries');
       expect(result, contains("menu"),
-          reason: 'Response should redirect to menu questions');
+          reason: 'Pig should soft-deflect back to the menu');
     });
 
     test('b: off-topic "Who is the president?" → refusal phrase, no Gemini call', () async {
@@ -206,9 +212,19 @@ void main() {
       expect(result, contains("menu"));
     });
 
-    test('d: off-topic "Tell me a joke" → refusal phrase', () async {
-      final result = await offTopicResponse('Tell me a joke');
-      expect(result, contains("menu"));
+    test('d: social "Tell me a joke" → persona route, Gemini called, returns response', () async {
+      final fakeAI = _FakeVertexAIService(
+        embeddingToReturn: [-1.0, 0.0, 0.0],
+        responseToReturn: 'Why did the ramen chef win an award? He had a lot of noodle-ty! Now, want to see our menu? 🐷',
+      );
+      final svc = _ragWithChunks(
+        [_chunk('1', 'menu text', [1.0, 0.0, 0.0])],
+        fakeAI: fakeAI,
+      );
+      final result = await svc.getResponse('Tell me a joke');
+      expect(fakeAI.invokeModelCallCount, 1,
+          reason: 'Gemini must be called via persona route for social queries like jokes');
+      expect(result, isNotEmpty);
     });
 
     test('e: off-topic "Are you ChatGPT?" → identity boundary: refusal phrase', () async {
@@ -226,21 +242,22 @@ void main() {
       expect(result, equals('Here is our menu information.'));
     });
 
-    test('h: low similarity score → returns off-topic refusal without calling Gemini', () async {
-      // Explicitly verify the threshold constant is used — score < 0.25 triggers the guard.
+    test('h: low similarity score → routes to persona prompt, Gemini called', () async {
+      // Explicitly verify the threshold constant is used — score < 0.25 triggers the persona route.
       expect(AppConfig.minSimilarityThreshold, equals(0.25));
 
       final fakeAI = _FakeVertexAIService(
-        // Embedding barely misaligned from the chunk so score < 0 (definitely below 0.25)
+        // Embedding opposite to chunk so score < 0 (definitely below 0.25)
         embeddingToReturn: [-1.0, 0.0, 0.0],
+        responseToReturn: 'Ha, that\'s above my snout\'s pay grade! I\'m much better at answering menu questions 🐷',
       );
       final svc = _ragWithChunks(
         [_chunk('1', 'Ramen menu', [1.0, 0.0, 0.0])],
         fakeAI: fakeAI,
       );
       final result = await svc.getResponse('totally unrelated question');
-      expect(fakeAI.invokeModelCallCount, 0,
-          reason: 'Gemini must be skipped when threshold is not met');
+      expect(fakeAI.invokeModelCallCount, 1,
+          reason: 'Gemini must be called via persona route when below similarity threshold');
       expect(result, contains("menu"));
     });
 
@@ -293,12 +310,12 @@ void main() {
       await svc.getResponse('What ramen do you have?');
 
       expect(capturedPrompt, isNotNull);
-      // Must contain the word REFUSE/STRICT so guardrail language is present
+      // Must contain guardrail language so Gemini knows how to handle off-topic queries
       final lowerPrompt = capturedPrompt!.toLowerCase();
-      expect(lowerPrompt, contains('refuse'),
-          reason: 'Hardened prompt must instruct Gemini to refuse off-topic queries');
+      expect(lowerPrompt, contains('soft-deflect'),
+          reason: 'Prompt must instruct Gemini to soft-deflect truly off-topic queries');
       expect(lowerPrompt, contains('only'),
-          reason: 'Prompt must restrict answers to menu context only');
+          reason: 'Prompt must restrict menu answers to provided context only');
       expect(lowerPrompt, contains('pig'),
           reason: 'Pig identity must be established in the prompt');
     });

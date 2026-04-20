@@ -131,7 +131,7 @@ void main() {
       final result = await svc.getResponse('tonkotsu ramen');
       // Gemini should have been called because similarity was high
       expect(fakeAI.invokeModelCallCount, greaterThan(0));
-      expect(result, equals('On-topic response'));
+      expect(result.content, equals('On-topic response'));
     });
 
     test('opposite direction vectors → below threshold, Gemini called with persona prompt', () async {
@@ -150,7 +150,7 @@ void main() {
       // Gemini IS called via persona route — not skipped
       expect(fakeAI.invokeModelCallCount, equals(1));
       // Response should be a friendly persona reply
-      expect(result, contains("menu"));
+      expect(result.content, contains("menu"));
     });
   });
 
@@ -169,7 +169,7 @@ void main() {
         [_chunk('1', 'menu text', [1.0, 0.0, 0.0])],
         fakeAI: fakeAI,
       );
-      return svc.getResponse(query);
+      return (await svc.getResponse(query)).content;
     }
 
     /// Helper that returns the pig's response to [query] when the query embedding
@@ -183,7 +183,7 @@ void main() {
         [_chunk('1', 'Tonkotsu Ramen', [1.0, 0.0, 0.0])],
         fakeAI: fakeAI,
       );
-      return svc.getResponse(query);
+      return (await svc.getResponse(query)).content;
     }
 
     test('a: off-topic "What is 2 + 2?" → persona route, Gemini called, soft deflection returned', () async {
@@ -198,7 +198,7 @@ void main() {
       final result = await svc.getResponse('What is 2 + 2?');
       expect(fakeAI.invokeModelCallCount, 1,
           reason: 'Gemini must be called via persona route for off-topic queries');
-      expect(result, contains("menu"),
+      expect(result.content, contains("menu"),
           reason: 'Pig should soft-deflect back to the menu');
     });
 
@@ -224,7 +224,7 @@ void main() {
       final result = await svc.getResponse('Tell me a joke');
       expect(fakeAI.invokeModelCallCount, 1,
           reason: 'Gemini must be called via persona route for social queries like jokes');
-      expect(result, isNotEmpty);
+      expect(result.content, isNotEmpty);
     });
 
     test('e: off-topic "Are you ChatGPT?" → identity boundary: refusal phrase', () async {
@@ -258,7 +258,7 @@ void main() {
       final result = await svc.getResponse('totally unrelated question');
       expect(fakeAI.invokeModelCallCount, 1,
           reason: 'Gemini must be called via persona route when below similarity threshold');
-      expect(result, contains("menu"));
+      expect(result.content, contains("menu"));
     });
 
     test('i: empty query → graceful error message, no crash', () async {
@@ -273,7 +273,7 @@ void main() {
       // Should not throw — should return a user-friendly fallback
       expect(() async => await svc.getResponse(''), returnsNormally);
       final result = await svc.getResponse('');
-      expect(result, isNotEmpty);
+      expect(result.content, isNotEmpty);
     });
 
     test('j: very long query (1000+ chars) → handled without crashing', () async {
@@ -287,7 +287,7 @@ void main() {
         fakeAI: fakeAI,
       );
       final result = await svc.getResponse(longQuery);
-      expect(result, isNotEmpty);
+      expect(result.content, isNotEmpty);
     });
   });
 

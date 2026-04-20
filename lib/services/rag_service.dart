@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:ooink/services/vertex_ai_service.dart';
 import '../config/app_config.dart';
+import '../models/rag_result.dart';
 import '../utils/logger.dart';
 
 /// Top-level function for parsing JSON in an isolate
@@ -133,7 +134,8 @@ class RAGService {
     }
   }
 
-  Future<String> _findRelevantContext(String query) async {
+  // Returns (contextText, topSimilarityScore) so getResponse can build RagResult without a second round-trip
+  Future<(String, double)> _findRelevantContext(String query) async {
     final topK = AppConfig.topKChunks;
     _ensureInitialized();
 
@@ -158,7 +160,7 @@ class RAGService {
       // This saves cost, latency, and prevents Gemini from being creative with unrelated topics.
       if (result.topScore < AppConfig.minSimilarityThreshold) {
         Logger.log('RAG: Score below threshold (${AppConfig.minSimilarityThreshold}), skipping AI — off-topic query blocked');
-        return 'BELOW_THRESHOLD';
+        return ('BELOW_THRESHOLD', result.topScore);
       }
 
       // 5. Retrieve chunks
@@ -166,7 +168,7 @@ class RAGService {
 
       final relevantContext = relevantChunks.map((c) => c.text).join('\n\n');
       Logger.log('RAG: Retrieved ${relevantContext.length} chars of context');
-      return relevantContext;
+      return (relevantContext, result.topScore);
 
     } catch (e, stackTrace) {
       Logger.error('Error finding relevant context', e, stackTrace);
@@ -174,14 +176,14 @@ class RAGService {
       // Pass specific error details to the prompt so the AI (or developer) knows what broke
       // This is crucial for debugging production issues like API quotas or permission errors
       if (e.toString().contains('API has not been used') || e.toString().contains('403')) {
-        return 'SYSTEM_ERROR: Vertex AI API error. Please check API permissions and quota in Google Cloud Console.';
+        return ('SYSTEM_ERROR: Vertex AI API error. Please check API permissions and quota in Google Cloud Console.', 0.0);
       }
 
-      return 'Menu information available. Please ask about our ramen, appetizers, or restaurant details.';
+      return ('Menu information available. Please ask about our ramen, appetizers, or restaurant details.', 0.0);
     }
   }
 
-  Future<String> getResponse(
+  Future<RagResult> getResponse(
     String userMessage, {
     List<Map<String, dynamic>>? conversationHistory,
   }) async {
@@ -212,20 +214,29 @@ class RAGService {
 
       // Step 2: Find relevant menu context using semantic search on the enriched query
       // This retrieves the top K most semantically similar chunks
-      final relevantContext = await _findRelevantContext(searchQuery);
+      final (context, topScore) = await _findRelevantContext(searchQuery);
 
       // Critical Error Handling: If context search failed with a system error (e.g., App Check disabled),
       // report it immediately instead of hallucinating an answer.
-      if (relevantContext.startsWith('SYSTEM_ERROR:')) {
-        return "⚠️ ${relevantContext.split('SYSTEM_ERROR: ')[1]}";
+      if (context.startsWith('SYSTEM_ERROR:')) {
+        return RagResult(
+          content: "${context.split('SYSTEM_ERROR: ')[1]}",
+          similarityScore: 0.0,
+          path: RagPath.error,
+        );
       }
 
       // Threshold guard: similarity was too low meaning query is not menu-related.
       // Route to persona prompt so Pig handles greetings, jokes, and small talk naturally,
       // while soft-deflecting truly off-topic topics (math, politics) back to the menu.
-      if (relevantContext == 'BELOW_THRESHOLD') {
+      if (context == 'BELOW_THRESHOLD') {
         Logger.log('RAG: Below threshold — routing to persona prompt');
-        return await _getPersonaResponse(userMessage, conversationHistory: conversationHistory);
+        final personaContent = await _getPersonaResponse(userMessage, conversationHistory: conversationHistory);
+        return RagResult(
+          content: personaContent,
+          similarityScore: topScore,
+          path: RagPath.persona,
+        );
       }
 
       // Step 2: Build the full prompt with hardened system instructions and context.
@@ -250,7 +261,7 @@ class RAGService {
       prompt.writeln('   right now, why not ask our staff directly? They can help!"');
       prompt.writeln('');
       prompt.writeln('MENU CONTEXT:');
-      prompt.writeln(relevantContext);
+      prompt.writeln(context);
       prompt.writeln();
 
       if (conversationHistory != null && conversationHistory.isNotEmpty) {
@@ -269,10 +280,18 @@ class RAGService {
 
       final response = await _vertexAIService.generateContent(prompt.toString());
 
-      return response;
+      return RagResult(
+        content: response,
+        similarityScore: topScore,
+        path: RagPath.rag,
+      );
     } catch (e) {
       Logger.error('Error getting AI response', e, e is Error ? e.stackTrace : null);
-      return "Sorry, I'm having trouble connecting right now. Please try again!";
+      return RagResult(
+        content: "Sorry, I'm having trouble connecting right now. Please try again!",
+        similarityScore: 0.0,
+        path: RagPath.error,
+      );
     }
   }
 

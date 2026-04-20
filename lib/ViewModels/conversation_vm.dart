@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show ChangeNotifier, visibleForTesting;
+import '../models/rag_result.dart';
+import '../services/analytics_service.dart';
 import '../services/speech_to_text_service.dart';
 import '../services/tts_service.dart';
 import '../services/rag_service.dart';
@@ -23,11 +25,15 @@ class ConversationViewModel extends ChangeNotifier {
   final TTSService _ttsService;
   final RAGService _ragService;
   final SessionRepository _sessionRepository;
+  final AnalyticsService _analyticsService;
 
   ConversationState _state = ConversationState.idle;
   String _userInput = '';
   String _aiResponse = '';
   String _errorMessage = '';
+
+  // Tracks when the current session started so we can compute duration for session_ended event
+  DateTime? _sessionStartTime;
 
   // 90-second inactivity timer for session management
   Timer? _inactivityTimer;
@@ -43,10 +49,12 @@ class ConversationViewModel extends ChangeNotifier {
     required TTSService ttsService,
     required RAGService ragService,
     required SessionRepository sessionRepository,
+    required AnalyticsService analyticsService,
   })  : _speechService = speechService,
         _ttsService = ttsService,
         _ragService = ragService,
-        _sessionRepository = sessionRepository;
+        _sessionRepository = sessionRepository,
+        _analyticsService = analyticsService;
 
   // Getters
   ConversationState get state => _state;
@@ -85,6 +93,17 @@ class ConversationViewModel extends ChangeNotifier {
   /// Called when the 90-second timer expires, silently clears the session context without notifying the user
   void _onSessionExpired() {
     Logger.session('Session expired after 90 seconds of inactivity');
+    if (_sessionRepository.hasActiveSession) {
+      final duration = _sessionStartTime != null
+          ? DateTime.now().difference(_sessionStartTime!).inSeconds
+          : 0;
+      _analyticsService.logSessionEnded(
+        durationSeconds: duration,
+        messageCount: _sessionRepository.messageCount,
+        endedBy: 'timeout',
+      );
+      _sessionStartTime = null;
+    }
     _sessionRepository.clearSession();
   }
 
@@ -96,6 +115,11 @@ class ConversationViewModel extends ChangeNotifier {
   Future<void> _ensureSession() async {
     if (!_sessionRepository.hasActiveSession) {
       await _sessionRepository.startSession();
+      _sessionStartTime = DateTime.now();
+      _analyticsService.logSessionStarted(
+        hourOfDay: _sessionStartTime!.hour,
+        dayOfWeek: _sessionStartTime!.weekday,
+      );
       Logger.session('New session started: ${_sessionRepository.currentSessionId}');
     }
   }
@@ -222,10 +246,26 @@ class ConversationViewModel extends ChangeNotifier {
 
       // Get AI response using RAG service with conversation history
       // This allows follow-up questions like "Is it spicy?" to work
-      _aiResponse = await _ragService.getResponse(
+      final stopwatch = Stopwatch()..start();
+      final ragResult = await _ragService.getResponse(
         _userInput,
         conversationHistory: conversationHistory,
       );
+      stopwatch.stop();
+      _aiResponse = ragResult.content;
+
+      _analyticsService.logQuerySent(
+        path: ragResult.path.name,
+        similarityScore: ragResult.similarityScore,
+        responseLatencyMs: stopwatch.elapsedMilliseconds,
+      );
+      // Only log threshold event for non-error paths — error score of 0.0 would be misleading
+      if (ragResult.path != RagPath.error) {
+        _analyticsService.logRagThresholdEvent(
+          score: ragResult.similarityScore,
+          passed: ragResult.path == RagPath.rag,
+        );
+      }
 
       // Add AI response to session
       _sessionRepository.addAssistantMessage(_aiResponse);
@@ -241,6 +281,7 @@ class ConversationViewModel extends ChangeNotifier {
           _aiResponse,
           onComplete: () {
             Logger.log('TTS completed, returning to idle');
+            _analyticsService.logTtsCompleted(responseLength: _aiResponse.length);
             // Only update state if still in speaking state (user might have interrupted)
             if (_state == ConversationState.speaking) {
               _updateState(ConversationState.idle);
@@ -278,6 +319,17 @@ class ConversationViewModel extends ChangeNotifier {
     _inactivityTimer?.cancel();
     _cancelSilenceCountdown();
     _speechStarted = false;
+    if (_sessionRepository.hasActiveSession) {
+      final duration = _sessionStartTime != null
+          ? DateTime.now().difference(_sessionStartTime!).inSeconds
+          : 0;
+      _analyticsService.logSessionEnded(
+        durationSeconds: duration,
+        messageCount: _sessionRepository.messageCount,
+        endedBy: 'reset',
+      );
+      _sessionStartTime = null;
+    }
     _sessionRepository.clearSession();
     _updateState(ConversationState.idle);
     _userInput = '';
@@ -293,6 +345,7 @@ class ConversationViewModel extends ChangeNotifier {
   void _setError(String message) {
     _errorMessage = message;
     _state = ConversationState.error;
+    _analyticsService.logErrorOccurred(errorType: message);
     notifyListeners();
 
     // Auto-recover from error after 3 seconds
@@ -324,6 +377,10 @@ class ConversationViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await _sessionRepository.submitFeedback(text);
+      _analyticsService.logFeedbackSubmitted(
+        hasText: text.trim().isNotEmpty,
+        messageCount: messageCount,
+      );
       Logger.log('Feedback submitted successfully');
       _isFeedbackSubmitting = false;
       notifyListeners();

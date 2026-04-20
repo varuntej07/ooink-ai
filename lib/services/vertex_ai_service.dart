@@ -1,5 +1,6 @@
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../utils/logger.dart';
@@ -55,8 +56,14 @@ class VertexAIService {
   /// to simulate successes/failures without initializing Firebase.
   @visibleForTesting
   Future<String?> invokeModel(String prompt) async {
-    final response = await _model!.generateContent([Content.text(prompt)]);
-    return response.text;
+    final trace = FirebasePerformance.instance.newTrace('llm_generation');
+    await trace.start();
+    try {
+      final response = await _model!.generateContent([Content.text(prompt)]);
+      return response.text;
+    } finally {
+      await trace.stop();
+    }
   }
 
   /// Generates content based on the provided prompt using Firebase AI with automatic retry logic
@@ -107,17 +114,23 @@ class VertexAIService {
   /// to simulate network failures without initializing Firebase or Cloud Functions.
   @visibleForTesting
   Future<List<double>> invokeEmbedding(String text) async {
-    final callable = _functions!.httpsCallable('generateEmbedding');
-    final result = await callable.call<Map<String, dynamic>>({'text': text});
-    final data = result.data;
-    if (!data.containsKey('embedding')) {
-      throw Exception('Invalid response from Cloud Function: missing embedding data');
+    final trace = FirebasePerformance.instance.newTrace('embedding_generation');
+    await trace.start();
+    try {
+      final callable = _functions!.httpsCallable('generateEmbedding');
+      final result = await callable.call<Map<String, dynamic>>({'text': text});
+      final data = result.data;
+      if (!data.containsKey('embedding')) {
+        throw Exception('Invalid response from Cloud Function: missing embedding data');
+      }
+      final embedding = List<double>.from(data['embedding'] as List);
+      if (embedding.length != 768) {
+        throw Exception('Invalid embedding dimensions: expected 768, got ${embedding.length}');
+      }
+      return embedding;
+    } finally {
+      await trace.stop();
     }
-    final embedding = List<double>.from(data['embedding'] as List);
-    if (embedding.length != 768) {
-      throw Exception('Invalid embedding dimensions: expected 768, got ${embedding.length}');
-    }
-    return embedding;
   }
 
   /// Generates embedding vector for the given text using Vertex AI via Cloud Functions with retry logic

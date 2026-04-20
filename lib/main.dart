@@ -10,6 +10,7 @@ import 'ViewModels/conversation_vm.dart';
 import 'services/speech_to_text_service.dart';
 import 'services/tts_service.dart';
 import 'services/rag_service.dart';
+import 'services/analytics_service.dart';
 import 'services/firestore_service.dart';
 import 'repositories/session_repository.dart';
 
@@ -62,6 +63,7 @@ class _OoinkAppState extends State<OoinkApp> {
       final speechService = SpeechToTextService();
       final ttsService = TTSService();
       final ragService = RAGService();
+      final analyticsService = AnalyticsService();
 
       final firestoreService = FirestoreService();
       final sessionRepository = SessionRepository(firestoreService: firestoreService);
@@ -72,6 +74,7 @@ class _OoinkAppState extends State<OoinkApp> {
         ttsService: ttsService,
         ragService: ragService,
         sessionRepository: sessionRepository,
+        analyticsService: analyticsService,
       );
 
       // AWAIT initialization - this ensures RAG knowledge base loads before UI shows

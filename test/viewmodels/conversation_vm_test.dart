@@ -6,6 +6,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ooink/ViewModels/conversation_vm.dart';
+import 'package:ooink/models/rag_result.dart';
+import 'package:ooink/services/analytics_service.dart';
 import 'package:ooink/services/rag_service.dart';
 import 'package:ooink/services/speech_to_text_service.dart';
 import 'package:ooink/services/tts_service.dart';
@@ -26,7 +28,10 @@ class _FakeSpeechService extends SpeechToTextService {
   Future<bool> initialize() async => true;
 
   @override
-  Future<void> startListening({required Function(String) onResult}) async {
+  Future<void> startListening({
+    required Function(String) onResult,
+    Function(double)? onSoundLevel,
+  }) async {
     if (throwOnStart) throw Exception('Fake mic error');
     if (textToReturn.isNotEmpty) {
       onResult(textToReturn);
@@ -89,14 +94,38 @@ class _FakeRAGService extends RAGService {
 
   // Override getResponse entirely — bypasses _ensureInitialized and all Firebase calls
   @override
-  Future<String> getResponse(
+  Future<RagResult> getResponse(
     String userMessage, {
     List<Map<String, dynamic>>? conversationHistory,
   }) async {
     lastQuery = userMessage;
     if (shouldThrow) throw Exception('Fake RAG error');
-    return responseToReturn;
+    return RagResult(
+      content: responseToReturn,
+      similarityScore: 0.8,
+      path: RagPath.rag,
+    );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Fake analytics service — all methods are no-ops so no Firebase calls are made.
+// ---------------------------------------------------------------------------
+class _FakeAnalyticsService extends AnalyticsService {
+  @override
+  void logSessionStarted({required int hourOfDay, required int dayOfWeek}) {}
+  @override
+  void logSessionEnded({required int durationSeconds, required int messageCount, required String endedBy}) {}
+  @override
+  void logQuerySent({required String path, required double similarityScore, required int responseLatencyMs}) {}
+  @override
+  void logRagThresholdEvent({required double score, required bool passed}) {}
+  @override
+  void logTtsCompleted({required int responseLength}) {}
+  @override
+  void logErrorOccurred({required String errorType}) {}
+  @override
+  void logFeedbackSubmitted({required bool hasText, required int messageCount}) {}
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +158,7 @@ ConversationViewModel _buildVM({
     sessionRepository: SessionRepository(
       firestoreService: _FakeFirestoreService(),
     ),
+    analyticsService: _FakeAnalyticsService(),
   );
 }
 

@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Pushes FeedbackScreen with a slide-up transition — clean, no jarring cuts
+  /// Pushes FeedbackScreen with a slide-up transition - clean, no jarring cuts
   /// Passes the existing ConversationViewModel into the new route so it stays in scope
   void _navigateToFeedback(BuildContext context) {
     final viewModel = context.read<ConversationViewModel>();
@@ -64,10 +64,16 @@ class _HomeScreenState extends State<HomeScreen> {
         reverseTransitionDuration: const Duration(milliseconds: 300),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1), // enters from bottom
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0, 1), // enters from bottom
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
             child: child,
           );
         },
@@ -90,13 +96,16 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Switches every 300ms to create a talking effect
   void _startSpeakingAnimation() {
     _speakingAnimationTimer?.cancel();
-    _speakingAnimationTimer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
-      if (mounted) {
-        setState(() {
-          _showActiveImage = !_showActiveImage;
-        });
-      }
-    });
+    _speakingAnimationTimer = Timer.periodic(
+      const Duration(milliseconds: 300),
+      (timer) {
+        if (mounted) {
+          setState(() {
+            _showActiveImage = !_showActiveImage;
+          });
+        }
+      },
+    );
   }
 
   /// Stops the speaking animation and resets to idle image
@@ -120,7 +129,8 @@ class _HomeScreenState extends State<HomeScreen> {
               // This ensures animation starts/stops reliably even for long responses
               if (viewModel.isSpeaking) {
                 // Start animation if not already running
-                if (_speakingAnimationTimer == null || !_speakingAnimationTimer!.isActive) {
+                if (_speakingAnimationTimer == null ||
+                    !_speakingAnimationTimer!.isActive) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted && viewModel.isSpeaking) {
                       _startSpeakingAnimation();
@@ -129,7 +139,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               } else {
                 // Stop animation if running
-                if (_speakingAnimationTimer != null && _speakingAnimationTimer!.isActive) {
+                if (_speakingAnimationTimer != null &&
+                    _speakingAnimationTimer!.isActive) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted && !viewModel.isSpeaking) {
                       _stopSpeakingAnimation();
@@ -147,165 +158,210 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               }
 
-              return Column(
+              final responseMaxHeight =
+                  MediaQuery.of(context).size.height * 0.35;
+
+              return Stack(
                 children: [
-                  // Top section: status text centered, feedback icon pinned to the far right
-                  // SizedBox(width: 48) on the left mirrors the icon button width so the text stays truly centered
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 48),
-                        Expanded(child: _buildStatusText(viewModel)),
-                        IconButton(
-                          icon: Icon(Icons.info_outline, color: Colors.black45, size: 28),
-                          tooltip: 'Share Feedback',
-                          onPressed: () => _navigateToFeedback(context),
+                  Column(
+                    children: [
+                      // Top section: status text centered, feedback icon pinned to the far right
+                      // SizedBox(width: 48) on the left mirrors the icon button width so the text stays truly centered
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 48),
+                            Expanded(child: _buildStatusText(viewModel)),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.info_outline,
+                                color: Colors.black45,
+                                size: 28,
+                              ),
+                              tooltip: 'Share Feedback',
+                              onPressed: () => _navigateToFeedback(context),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+
+                      // Pig animation/image - changes based on state
+                      Expanded(
+                        child: Center(child: _buildPigDisplay(viewModel)),
+                      ),
+                    ],
                   ),
-
-                  // Pig animation/image - changes based on state
-                  Expanded(
-                    child: Center(
-                      child: _buildPigDisplay(viewModel),
-                    ),
-                  ),
-
-                // User input display (only when listening or processing, not when speaking or after)
-                if (viewModel.userInput.isNotEmpty && !viewModel.isSpeaking && viewModel.aiResponse.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.grey.shade100, Colors.grey.shade200],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withValues(alpha: 0.2),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        viewModel.userInput,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey.shade800,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-
-                const SizedBox(height: 20),
-
-                // AI response display (shown during speaking and after)
-                if (viewModel.aiResponse.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      constraints: const BoxConstraints(maxHeight: 180),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade50, Colors.cyan.shade50],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withValues(alpha: 0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      // Scrollable so the full response is readable without clipping the layout
-                      child: SingleChildScrollView(
-                        child: Text(
-                          viewModel.aiResponse,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue.shade900,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                const SizedBox(height: 20),
-
-                // Error message display
-                if (viewModel.hasError)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        viewModel.errorMessage,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.red,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-
-                // Silence countdown progress bar — animates from left to right over 2.7s
-                // Appears above the button when auto-send is counting down after user stops speaking
-                if (viewModel.isListening && viewModel.silenceCountdownActive)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        TweenAnimationBuilder<double>(
-                          // New key each time countdown activates so animation restarts cleanly
-                          key: ValueKey('countdown_${viewModel.silenceCountdownActive}'),
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: AppConfig.silenceAutoSendDelay,
-                          builder: (context, value, child) => ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: value,
-                              minHeight: 6,
-                              color: Colors.orange.shade500,
-                              backgroundColor: Colors.orange.shade100,
+                        // User input display (only when listening or processing, not when speaking or after)
+                        if (viewModel.userInput.isNotEmpty &&
+                            !viewModel.isSpeaking &&
+                            viewModel.aiResponse.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.grey.shade100,
+                                    Colors.grey.shade200,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withValues(alpha: 0.2),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                viewModel.userInput,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.grey.shade800,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
+
+                        if (viewModel.userInput.isNotEmpty &&
+                            !viewModel.isSpeaking &&
+                            viewModel.aiResponse.isEmpty)
+                          const SizedBox(height: 20),
+
+                        // AI response display (shown during speaking and after)
+                        if (viewModel.aiResponse.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                            ),
+                            child: Container(
+                              constraints: BoxConstraints(
+                                maxHeight: responseMaxHeight,
+                              ),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.blue.shade50,
+                                    Colors.cyan.shade50,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blue.withValues(alpha: 0.15),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              // Scrollable so the full response is readable without clipping the layout
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  viewModel.aiResponse,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue.shade900,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        if (viewModel.aiResponse.isNotEmpty)
+                          const SizedBox(height: 20),
+
+                        // Error message display
+                        if (viewModel.hasError)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade100,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                viewModel.errorMessage,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.red,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+
+                        if (viewModel.hasError) const SizedBox(height: 20),
+
+                        // Silence countdown progress bar - animates from left to right over 2.7s
+                        // Appears above the button when auto-send is counting down after user stops speaking
+                        if (viewModel.isListening &&
+                            viewModel.silenceCountdownActive)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32.0,
+                            ),
+                            child: TweenAnimationBuilder<double>(
+                              // New key each time countdown activates so animation restarts cleanly
+                              key: ValueKey(
+                                'countdown_${viewModel.silenceCountdownActive}',
+                              ),
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: AppConfig.silenceAutoSendDelay,
+                              builder: (context, value, child) => ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: value,
+                                  minHeight: 6,
+                                  color: Colors.orange.shade500,
+                                  backgroundColor: Colors.orange.shade100,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        if (viewModel.isListening &&
+                            viewModel.silenceCountdownActive)
+                          const SizedBox(height: 20),
+
+                        // Main action button
+                        Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: _buildActionButton(context, viewModel),
                         ),
                       ],
                     ),
                   ),
-
-                // Main action button
-                Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: _buildActionButton(context, viewModel),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -319,27 +375,33 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_showIdleLottie) {
       return Lottie.asset(
         'assets/Pig-Dancing.json',
-        width: 350,
-        height: 350,
+        width: double.infinity,
+        height: double.infinity,
         fit: BoxFit.contain,
       );
     }
 
     // Show alternating images when speaking
     if (viewModel.isSpeaking) {
-      return Image.asset(
-        _showActiveImage ? 'assets/pig-bot-active.png' : 'assets/pig-bot-idle.png',
-        width: 350,
-        height: 350,
-        fit: BoxFit.contain,
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 150),
+        child: Image.asset(
+          _showActiveImage
+              ? 'assets/pig-bot-active.png'
+              : 'assets/pig-bot-idle.png',
+          key: ValueKey(_showActiveImage),
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.contain,
+        ),
       );
     }
 
     // Default: show active image (pig looks awake and ready for idle, listening, and processing states)
     return Image.asset(
       'assets/pig-bot-active.png',
-      width: 350,
-      height: 350,
+      width: double.infinity,
+      height: double.infinity,
       fit: BoxFit.contain,
     );
   }
@@ -358,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
       statusText = 'Thinking...';
       gradientColors = [Colors.blue.shade400, Colors.cyan.shade400];
     } else if (viewModel.isSpeaking) {
-      statusText = 'Oink oink! 🐷';
+      statusText = 'Oink oink! \u{1F437}';
       gradientColors = [Colors.pink.shade400, Colors.pink.shade600];
     } else {
       statusText = 'Tap to try again';
@@ -384,7 +446,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActionButton(BuildContext context, ConversationViewModel viewModel) {
+  Widget _buildActionButton(
+    BuildContext context,
+    ConversationViewModel viewModel,
+  ) {
     String buttonText;
     VoidCallback? onPressed;
     Color buttonColor;
@@ -394,7 +459,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onPressed = () => viewModel.startListening();
       buttonColor = Colors.pink;
     } else if (viewModel.isListening && viewModel.silenceCountdownActive) {
-      // Countdown is running — let user cancel it and keep speaking
+      // Countdown is running - let user cancel it and keep speaking
       buttonText = 'Tap to Cancel';
       onPressed = () => viewModel.cancelListening();
       buttonColor = Colors.orange.shade700;
@@ -424,15 +489,14 @@ class _HomeScreenState extends State<HomeScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: buttonColor,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(35)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(35),
+          ),
           elevation: 8,
         ),
         child: Text(
           buttonText,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
       ),
     );

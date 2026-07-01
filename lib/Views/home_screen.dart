@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../ViewModels/conversation_vm.dart';
-import '../config/app_config.dart';
 import 'feedback_screen.dart';
 
 /// Displays pig bot images with state-based animations:
@@ -317,37 +316,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         if (viewModel.hasError) const SizedBox(height: 20),
 
-                        // Silence countdown progress bar - animates from left to right over 2.7s
-                        // Appears above the button when auto-send is counting down after user stops speaking
-                        if (viewModel.isListening &&
-                            viewModel.silenceCountdownActive)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32.0,
-                            ),
-                            child: TweenAnimationBuilder<double>(
-                              // New key each time countdown activates so animation restarts cleanly
-                              key: ValueKey(
-                                'countdown_${viewModel.silenceCountdownActive}',
-                              ),
-                              tween: Tween(begin: 0.0, end: 1.0),
-                              duration: AppConfig.silenceAutoSendDelay,
-                              builder: (context, value, child) => ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: value,
-                                  minHeight: 6,
-                                  color: Colors.orange.shade500,
-                                  backgroundColor: Colors.orange.shade100,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                        if (viewModel.isListening &&
-                            viewModel.silenceCountdownActive)
-                          const SizedBox(height: 20),
-
                         // Main action button
                         Padding(
                           padding: const EdgeInsets.all(32.0),
@@ -450,35 +418,31 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     ConversationViewModel viewModel,
   ) {
+    // "Connecting" = processing before the room is up (no Firestore session yet).
+    final bool connecting =
+        viewModel.isProcessing && !viewModel.hasActiveSession;
+
     String buttonText;
     VoidCallback? onPressed;
     Color buttonColor;
 
     if (viewModel.isIdle || viewModel.hasError) {
-      buttonText = 'Tap to Talk';
-      onPressed = () => viewModel.startListening();
+      buttonText = viewModel.hasError ? 'Tap to Try Again' : 'Tap to Talk';
+      onPressed = () => viewModel.startSession();
       buttonColor = Colors.pink;
-    } else if (viewModel.isListening && viewModel.silenceCountdownActive) {
-      // Countdown is running - let user cancel it and keep speaking
-      buttonText = 'Tap to Cancel';
-      onPressed = () => viewModel.cancelListening();
-      buttonColor = Colors.orange.shade700;
-    } else if (viewModel.isListening) {
-      buttonText = 'Stop & Send';
-      onPressed = () => viewModel.stopListeningAndProcess();
-      buttonColor = Colors.orange;
-    } else if (viewModel.isProcessing) {
-      buttonText = 'Processing...';
-      onPressed = null; // Disabled during processing
+    } else if (connecting) {
+      buttonText = 'Connecting...';
+      onPressed = null; // disabled until the room is ready
       buttonColor = Colors.grey;
-    } else if (viewModel.isSpeaking) {
-      buttonText = 'Speaking...';
-      onPressed = () => viewModel.stopSpeaking();
-      buttonColor = Colors.blue;
     } else {
-      buttonText = 'Tap to Talk';
-      onPressed = () => viewModel.startListening();
-      buttonColor = Colors.pink;
+      // Active conversation (listening, thinking, or speaking) — tap to end.
+      buttonText = 'Stop Talking';
+      onPressed = () => viewModel.endSession();
+      buttonColor = viewModel.isSpeaking
+          ? Colors.blue
+          : viewModel.isProcessing
+              ? Colors.grey
+              : Colors.orange;
     }
 
     return SizedBox(

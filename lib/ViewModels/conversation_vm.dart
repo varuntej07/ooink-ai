@@ -1,29 +1,30 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show ChangeNotifier, visibleForTesting;
-import '../models/rag_result.dart';
+import '../models/voice_session_status.dart';
 import '../services/analytics_service.dart';
-import '../services/speech_to_text_service.dart';
-import '../services/tts_service.dart';
-import '../services/rag_service.dart';
+import '../services/voice_session_service.dart';
 import '../repositories/session_repository.dart';
 import '../utils/logger.dart';
-import '../config/app_config.dart';
 
-/// Enum representing the different states of conversation
+/// Enum representing the different states of conversation.
+/// Values are unchanged from the previous on-device pipeline so the View's
+/// animation/status logic keeps working.
 enum ConversationState {
-  idle, // Waiting for user to start
-  listening, // Actively listening to user
-  processing, // Sending to AI and waiting for response
-  speaking, // Pig is speaking the response
+  idle, // Waiting for user to tap Talk
+  listening, // Connected, Pig is listening
+  processing, // Connecting, or Pig is thinking
+  speaking, // Pig is speaking
   error,
 }
 
-/// ViewModel for the conversation flow
-/// Coordinates speech recognition, AI responses, text-to-speech, and session management with 90-second inactivity timer
+/// ViewModel for the conversation flow.
+///
+/// STT, the LLM, TTS, and the menu RAG pipeline all run server-side in the
+/// LiveKit agent now. This ViewModel is a thin wrapper over [VoiceSessionService]:
+/// it maps voice events to [ConversationState], mirrors transcripts for display,
+/// and keeps logging sessions/messages to Firestore + Analytics exactly as before.
 class ConversationViewModel extends ChangeNotifier {
-  final SpeechToTextService _speechService;
-  final TTSService _ttsService;
-  final RAGService _ragService;
+  final VoiceSessionService _voiceService;
   final SessionRepository _sessionRepository;
   final AnalyticsService _analyticsService;
 
@@ -32,29 +33,26 @@ class ConversationViewModel extends ChangeNotifier {
   String _aiResponse = '';
   String _errorMessage = '';
 
-  // Tracks when the current session started so we can compute duration for session_ended event
+  // Tracks when the session started so we can compute duration for session_ended.
   DateTime? _sessionStartTime;
 
-  // 90-second inactivity timer for session management
+  // Failsafe inactivity timer. The real 3-minute idle end happens server-side
+  // (the agent says goodbye and deletes the room); this is only a backup in
+  // case connectivity drops and no `ended` event arrives.
   Timer? _inactivityTimer;
-  static const Duration _sessionTimeout = Duration(seconds: 90);
+  static const Duration _sessionTimeout = Duration(minutes: 5);
 
-  // Silence detection state for auto-send
-  Timer? _silenceTimer;
-  bool _speechStarted = false;      // Flips true once the user's voice level crosses the speech threshold
-  bool _silenceCountdownActive = false; // True during the 2.7s countdown before auto-send fires
+  StreamSubscription<VoiceServerEvent>? _voiceSub;
 
   ConversationViewModel({
-    required SpeechToTextService speechService,
-    required TTSService ttsService,
-    required RAGService ragService,
+    required VoiceSessionService voiceService,
     required SessionRepository sessionRepository,
     required AnalyticsService analyticsService,
-  })  : _speechService = speechService,
-        _ttsService = ttsService,
-        _ragService = ragService,
+  })  : _voiceService = voiceService,
         _sessionRepository = sessionRepository,
-        _analyticsService = analyticsService;
+        _analyticsService = analyticsService {
+    _voiceSub = _voiceService.events.listen(_handleVoiceEvent);
+  }
 
   // Getters
   ConversationState get state => _state;
@@ -66,52 +64,110 @@ class ConversationViewModel extends ChangeNotifier {
   bool get isProcessing => _state == ConversationState.processing;
   bool get isSpeaking => _state == ConversationState.speaking;
   bool get hasError => _state == ConversationState.error;
-  // True while the 2.7s silence countdown is running — View uses this to show animated progress bar
-  bool get silenceCountdownActive => _silenceCountdownActive;
 
-  // Initialize all services including RAG
-  Future<void> initialize() async {
-    try {
-      Logger.log('Initializing services...');
-      await _ttsService.initialize();
-      await _speechService.initialize();
-      await _ragService.initialize(); // Initialize RAG service with menu knowledge base
-      Logger.log('All services initialized successfully');
-    } catch (e, stackTrace) {
-      Logger.error('Failed to initialize services', e, stackTrace);
-      _setError('Oink! Having trouble starting up. Please restart the app.');
-      rethrow; // Rethrow so main.dart knows initialization failed
+  /// Nothing heavy to load on-device anymore (no embeddings/STT/TTS models).
+  /// Kept so main.dart's startup flow doesn't need to change shape.
+  Future<void> initialize() async {}
+
+  /// Starts a voice conversation — fetches a token, connects to LiveKit, and
+  /// the Pig agent is dispatched into the room.
+  Future<void> startSession() async {
+    if (_state != ConversationState.idle && _state != ConversationState.error) {
+      return;
+    }
+    _userInput = '';
+    _aiResponse = '';
+    _errorMessage = '';
+    _updateState(ConversationState.processing); // shows "Connecting…"
+    await _voiceService.startSession();
+  }
+
+  /// Ends the voice conversation (user tapped Stop).
+  Future<void> endSession() async {
+    await _voiceService.endSession();
+    _teardownSession(endedBy: 'user');
+    _updateState(ConversationState.idle);
+  }
+
+  void _handleVoiceEvent(VoiceServerEvent event) {
+    switch (event.type) {
+      case VoiceEventType.ready:
+        _ensureSession();
+        _resetInactivityTimer();
+        if (_state == ConversationState.processing) {
+          _updateState(ConversationState.listening);
+        }
+        break;
+
+      case VoiceEventType.agentState:
+        _applyAgentState(event.agentState);
+        break;
+
+      case VoiceEventType.userTranscript:
+        _userInput = event.text ?? '';
+        _aiResponse = ''; // clear old answer while the user is asking
+        _resetInactivityTimer();
+        notifyListeners();
+        break;
+
+      case VoiceEventType.agentTranscript:
+        _aiResponse = event.text ?? '';
+        notifyListeners();
+        break;
+
+      case VoiceEventType.userFinal:
+        final text = (event.text ?? '').trim();
+        if (text.isNotEmpty) {
+          _sessionRepository.addUserMessage(text); // Firestore log
+          // Score/path/latency now live server-side; log the query as a count.
+          _analyticsService.logQuerySent(
+            path: 'voice',
+            similarityScore: 0.0,
+            responseLatencyMs: 0,
+          );
+        }
+        _resetInactivityTimer();
+        break;
+
+      case VoiceEventType.agentFinal:
+        final text = (event.text ?? '').trim();
+        if (text.isNotEmpty) {
+          _sessionRepository.addAssistantMessage(text); // Firestore log
+        }
+        break;
+
+      case VoiceEventType.ended:
+        _teardownSession(endedBy: 'agent');
+        _updateState(ConversationState.idle);
+        break;
+
+      case VoiceEventType.error:
+        _voiceService.endSession();
+        _teardownSession(endedBy: 'error');
+        _setError(event.errorMessage ?? 'Voice connection failed. Tap to try again.');
+        break;
     }
   }
 
-  /// Starts or resets the 90-second inactivity timer, called whenever there's user activity (new question)
-  void _resetInactivityTimer() {
-    _inactivityTimer?.cancel();
-    _inactivityTimer = Timer(_sessionTimeout, _onSessionExpired);
-  }
-
-  /// Called when the 90-second timer expires, silently clears the session context without notifying the user
-  void _onSessionExpired() {
-    Logger.session('Session expired after 90 seconds of inactivity');
-    if (_sessionRepository.hasActiveSession) {
-      final duration = _sessionStartTime != null
-          ? DateTime.now().difference(_sessionStartTime!).inSeconds
-          : 0;
-      _analyticsService.logSessionEnded(
-        durationSeconds: duration,
-        messageCount: _sessionRepository.messageCount,
-        endedBy: 'timeout',
-      );
-      _sessionStartTime = null;
+  void _applyAgentState(VoiceAgentState? s) {
+    switch (s) {
+      case VoiceAgentState.listening:
+      case VoiceAgentState.idle:
+        _updateState(ConversationState.listening);
+        break;
+      case VoiceAgentState.initializing:
+      case VoiceAgentState.thinking:
+        _updateState(ConversationState.processing);
+        break;
+      case VoiceAgentState.speaking:
+        _updateState(ConversationState.speaking);
+        break;
+      case null:
+        break;
     }
-    _sessionRepository.clearSession();
   }
 
-  /// Directly triggers session expiry — exposed for unit tests that cannot wait 90 real seconds.
-  @visibleForTesting
-  void triggerInactivityForTesting() => _onSessionExpired();
-
-  /// Ensures a session exists, creates one if needed, this is called at the start of each conversation
+  /// Ensures a Firestore session exists; created lazily once the room connects.
   Future<void> _ensureSession() async {
     if (!_sessionRepository.hasActiveSession) {
       await _sessionRepository.startSession();
@@ -120,205 +176,14 @@ class ConversationViewModel extends ChangeNotifier {
         hourOfDay: _sessionStartTime!.hour,
         dayOfWeek: _sessionStartTime!.weekday,
       );
-      Logger.session('New session started: ${_sessionRepository.currentSessionId}');
+      Logger.session('New voice session: ${_sessionRepository.currentSessionId}');
     }
   }
 
-  // Start listening to user
-  Future<void> startListening() async {
-    if (_state != ConversationState.idle) {
-      return;
-    }
-
-    // Reset silence detection state fresh for each new listening session
-    _cancelSilenceCountdown();
-    _speechStarted = false;
-
-    _updateState(ConversationState.listening);
-    _userInput = '';
-    _aiResponse = ''; // Clear previous response so user can see their new question
-    _errorMessage = '';
-
-    try {
-      await _speechService.startListening(
-        onResult: (recognizedText) {
-          _userInput = recognizedText;
-          notifyListeners();
-        },
-        onSoundLevel: _onSoundLevel,
-      );
-    } catch (e, stackTrace) {
-      Logger.error('Failed to start speech recognition', e, stackTrace);
-      _setError('Failed to start listening: $e');
-    }
-  }
-
-  /// Receives continuous sound level updates (dB) from the STT engine while listening
-  /// Drives the auto-send silence detection: waits for speech to start, then auto-sends after 2.5s of quiet
-  void _onSoundLevel(double level) {
-    if (_state != ConversationState.listening) return;
-
-    if (level >= AppConfig.speechDetectedThreshold) {
-      // User is actively speaking — mark speech started and cancel any running countdown
-      _speechStarted = true;
-      if (_silenceCountdownActive) {
-        _cancelSilenceCountdown();
-      }
-    } else if (level < AppConfig.silenceSoundThreshold && _speechStarted && !_silenceCountdownActive) {
-      // Sound dropped below silence threshold after speech was detected — start the auto-send countdown
-      _silenceCountdownActive = true;
-      notifyListeners(); // Triggers the UI countdown animation
-
-      _silenceTimer = Timer(AppConfig.silenceAutoSendDelay, () {
-        // Only auto-send if we're still listening and actually captured something
-        if (_state == ConversationState.listening && _userInput.isNotEmpty) {
-          Logger.log('STT: Auto-sending after ${AppConfig.silenceAutoSendDelay.inMilliseconds}ms of silence');
-          stopListeningAndProcess();
-        } else {
-          // No speech captured (user was silent from the start) — just reset quietly
-          _cancelSilenceCountdown();
-          _speechStarted = false;
-        }
-      });
-    }
-  }
-
-  /// Cancels the silence countdown timer and clears the active flag — used on speech resume or manual cancel
-  void _cancelSilenceCountdown() {
-    _silenceTimer?.cancel();
-    _silenceTimer = null;
-    if (_silenceCountdownActive) {
-      _silenceCountdownActive = false;
-      notifyListeners();
-    }
-  }
-
-  // Stop listening and process the user's speech
-  Future<void> stopListeningAndProcess() async {
-    if (_state != ConversationState.listening) {
-      return;
-    }
-
-    // Always clean up silence detection before processing
-    _cancelSilenceCountdown();
-    _speechStarted = false;
-
-    await _speechService.stopListening();
-
-    if (_userInput.isEmpty) {
-      _setError('No speech detected. Please try again!');
-      _updateState(ConversationState.idle);
-      return;
-    }
-
-    // Process the user input
-    await _processUserInput();
-  }
-
-  // Cancel current listening session
-  Future<void> cancelListening() async {
-    if (_state == ConversationState.listening) {
-      _cancelSilenceCountdown();
-      _speechStarted = false;
-      await _speechService.cancel();
-      _updateState(ConversationState.idle);
-      _userInput = '';
-      notifyListeners();
-    }
-  }
-
-  // Process user input through AI and speak response, includes session management and conversation history
-  Future<void> _processUserInput() async {
-    _updateState(ConversationState.processing);
-
-    try {
-      // Ensure we have an active session
-      await _ensureSession();
-
-      // Add user message to session
-      _sessionRepository.addUserMessage(_userInput);
-
-      // Reset the 90-second inactivity timer
-      _resetInactivityTimer();
-
-      // Get conversation history for context
-      final conversationHistory = _sessionRepository.getConversationHistory();
-
-      // Get AI response using RAG service with conversation history
-      // This allows follow-up questions like "Is it spicy?" to work
-      final stopwatch = Stopwatch()..start();
-      final ragResult = await _ragService.getResponse(
-        _userInput,
-        conversationHistory: conversationHistory,
-      );
-      stopwatch.stop();
-      _aiResponse = ragResult.content;
-
-      _analyticsService.logQuerySent(
-        path: ragResult.path.name,
-        similarityScore: ragResult.similarityScore,
-        responseLatencyMs: stopwatch.elapsedMilliseconds,
-      );
-      // Only log threshold event for non-error paths — error score of 0.0 would be misleading
-      if (ragResult.path != RagPath.error) {
-        _analyticsService.logRagThresholdEvent(
-          score: ragResult.similarityScore,
-          passed: ragResult.path == RagPath.rag,
-        );
-      }
-
-      // Add AI response to session
-      _sessionRepository.addAssistantMessage(_aiResponse);
-
-      // Reset timer again (activity detected)
-      _resetInactivityTimer();
-
-      // Speak the response - wrapped in separate try-catch so TTS errors don't kill the whole flow
-      _updateState(ConversationState.speaking);
-      try {
-        Logger.log('Starting TTS for response (${_aiResponse.length} characters)');
-        await _ttsService.speak(
-          _aiResponse,
-          onComplete: () {
-            Logger.log('TTS completed, returning to idle');
-            _analyticsService.logTtsCompleted(responseLength: _aiResponse.length);
-            // Only update state if still in speaking state (user might have interrupted)
-            if (_state == ConversationState.speaking) {
-              _updateState(ConversationState.idle);
-            }
-          },
-        );
-      } catch (ttsError, ttsStackTrace) {
-        // Log TTS error but don't show error to user - they already got the text response
-        Logger.error('TTS failed but continuing', ttsError, ttsStackTrace);
-        // Return to idle after a brief delay so user can read the response
-        Future.delayed(const Duration(seconds: 2), () {
-          if (_state == ConversationState.speaking) {
-            _updateState(ConversationState.idle);
-          }
-        });
-      }
-    } catch (e, stackTrace) {
-      Logger.error('Failed to process user input and get AI response', e, stackTrace);
-      // User-friendly error message
-      _setError('Oink! Something went wrong. Please try again!');
-    }
-  }
-
-  Future<void> stopSpeaking() async {
-    if (_state == ConversationState.speaking) {
-      await _ttsService.stop();
-      _updateState(ConversationState.idle);
-    }
-  }
-
-  // Reset to idle state, also clearing the session
-  void reset() {
-    _speechService.cancel();
-    _ttsService.stop();
+  /// Logs session_ended, clears the Firestore session, and resets transcripts.
+  /// Does NOT change [_state] — callers decide the next state.
+  void _teardownSession({required String endedBy}) {
     _inactivityTimer?.cancel();
-    _cancelSilenceCountdown();
-    _speechStarted = false;
     if (_sessionRepository.hasActiveSession) {
       final duration = _sessionStartTime != null
           ? DateTime.now().difference(_sessionStartTime!).inSeconds
@@ -326,16 +191,28 @@ class ConversationViewModel extends ChangeNotifier {
       _analyticsService.logSessionEnded(
         durationSeconds: duration,
         messageCount: _sessionRepository.messageCount,
-        endedBy: 'reset',
+        endedBy: endedBy,
       );
       _sessionStartTime = null;
     }
     _sessionRepository.clearSession();
-    _updateState(ConversationState.idle);
     _userInput = '';
     _aiResponse = '';
-    _errorMessage = '';
   }
+
+  void _resetInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(_sessionTimeout, _onInactivityFailsafe);
+  }
+
+  void _onInactivityFailsafe() {
+    Logger.session('Voice session inactivity failsafe (5 min) — ending');
+    endSession();
+  }
+
+  /// Directly triggers the inactivity failsafe — for unit tests.
+  @visibleForTesting
+  void triggerInactivityForTesting() => _onInactivityFailsafe();
 
   void _updateState(ConversationState newState) {
     _state = newState;
@@ -348,29 +225,36 @@ class ConversationViewModel extends ChangeNotifier {
     _analyticsService.logErrorOccurred(errorType: message);
     notifyListeners();
 
-    // Auto-recover from error after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
+    // Auto-recover to idle after a few seconds.
+    Future.delayed(const Duration(seconds: 4), () {
       if (_state == ConversationState.error) {
-        _updateState(ConversationState.idle);
         _errorMessage = '';
+        _updateState(ConversationState.idle);
       }
     });
   }
 
+  /// Resets to idle, ending any active voice session and Firestore session.
+  void reset() {
+    _voiceService.endSession();
+    _teardownSession(endedBy: 'reset');
+    _errorMessage = '';
+    _updateState(ConversationState.idle);
+  }
+
   @override
   void dispose() {
-    _inactivityTimer?.cancel();      // Cancel timer before disposing
-    _silenceTimer?.cancel();         // Cancel silence detection timer
-    _sessionRepository.dispose();   // Clean up session repository
-    _speechService.dispose();
-    _ttsService.dispose();
+    _voiceSub?.cancel();
+    _inactivityTimer?.cancel();
+    _sessionRepository.dispose();
+    _voiceService.dispose();
     super.dispose();
   }
 
   bool _isFeedbackSubmitting = false;
   bool get isFeedbackSubmitting => _isFeedbackSubmitting;
 
-  /// Submits anonymous feedback through the session repository — returns true on success, false on failure
+  /// Submits anonymous feedback through the session repository — returns true on success.
   Future<bool> submitFeedback(String text) async {
     if (text.trim().isEmpty) return false;
     _isFeedbackSubmitting = true;
@@ -393,7 +277,7 @@ class ConversationViewModel extends ChangeNotifier {
     }
   }
 
-  // Additional getters for session info (handy for debugging)
+  // Session info getters (handy for debugging).
   bool get hasActiveSession => _sessionRepository.hasActiveSession;
   int get messageCount => _sessionRepository.messageCount;
   String? get currentSessionId => _sessionRepository.currentSessionId;

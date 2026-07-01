@@ -1,9 +1,11 @@
 // Integration tests for the Ooink bot
-// These tests run on a REAL device or emulator with actual Firebase, microphone, and TTS.
-// They validate the full end-to-end pipeline that unit tests cannot cover.
+// These tests run on a REAL device with actual Firebase and microphone, and they
+// require the LiveKit voice backend to be deployed: the getLiveKitToken function
+// and the hosted "ooink-pig" agent. They validate the full real-time voice path
+// that unit tests cannot cover.
 //
 // Run with: flutter test integration_test/app_test.dart
-// Requires: connected device, Firebase project configured, valid google-services.json
+// Requires: connected device, Firebase configured, deployed token function + agent.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,23 +58,24 @@ void main() {
   });
 
   group('Ooink App — conversation flow', () {
-    /// Taps the main button and verifies the state change to listening.
-    /// Note: actual speech recognition requires device microphone permission granted.
-    testWidgets('d: tapping "Tap to Talk" changes button text to "Stop & Send"', (WidgetTester tester) async {
+    /// Taps the main button and verifies it leaves the idle "Tap to Talk" state.
+    /// Tapping connects to LiveKit, so the button shows "Connecting..." and then
+    /// "Stop Talking" once the room is up (needs the deployed token fn + agent).
+    testWidgets('d: tapping "Tap to Talk" starts connecting', (WidgetTester tester) async {
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 15));
 
-      // Tap the main action button
       final tapToTalkButton = find.textContaining('Tap to Talk');
       if (tapToTalkButton.evaluate().isNotEmpty) {
         await tester.tap(tapToTalkButton);
         await tester.pump();
 
-        // After tapping, state should be listening — button text changes
+        // Immediately after tapping, the session is connecting.
         expect(
-          find.textContaining('Stop'),
-          findsOneWidget,
-          reason: 'Button must change to show the user they can stop listening',
+          find.textContaining('Connecting').evaluate().isNotEmpty ||
+              find.textContaining('Stop').evaluate().isNotEmpty,
+          isTrue,
+          reason: 'Button must leave "Tap to Talk" once a session starts',
         );
       }
     });
@@ -100,8 +103,8 @@ void main() {
     /// Manual step: say "What is 2 plus 2?" — response box must say something
     /// about being Pig the menu assistant, NOT answer the math question.
     testWidgets('g: off-topic question produces refusal response (manual speech test)', (WidgetTester tester) async {
-      // Automated assertion of the refusal phrase text is in rag_service_test.dart.
-      // This integration test validates the full pipeline delivers the refusal to the UI.
+      // The RAG routing + deflection now lives in the Python agent (backend/). Validate
+      // there with backend/AGENTS.md's quick RAG check; this verifies the UI delivery.
       expect(true, isTrue);
     });
   });

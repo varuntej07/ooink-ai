@@ -1,137 +1,65 @@
-// Unit tests for ConversationViewModel — Task 1.5: state machine transitions.
+// Unit tests for ConversationViewModel — the LiveKit voice state machine.
 //
-// Strategy: inject fake implementations of all four service dependencies so no
-// real Firebase, TTS, or microphone code runs. Fake services expose control flags
-// to simulate success, failure, or specific timing behavior.
+// Strategy: inject a fake VoiceSessionService whose event stream we drive
+// manually, plus fake Analytics/Firestore so no network or LiveKit runs.
+
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ooink/ViewModels/conversation_vm.dart';
-import 'package:ooink/models/rag_result.dart';
-import 'package:ooink/services/analytics_service.dart';
-import 'package:ooink/services/rag_service.dart';
-import 'package:ooink/services/speech_to_text_service.dart';
-import 'package:ooink/services/tts_service.dart';
-import 'package:ooink/services/firestore_service.dart';
+import 'package:ooink/models/voice_session_status.dart';
 import 'package:ooink/repositories/session_repository.dart';
+import 'package:ooink/services/analytics_service.dart';
+import 'package:ooink/services/firestore_service.dart';
+import 'package:ooink/services/voice_session_service.dart';
 import '../test_helpers.dart';
 
 // ---------------------------------------------------------------------------
-// Fake speech service — onResult is called synchronously with [textToReturn].
-// Set [textToReturn] to '' to simulate silence (no final speech result).
+// Fake voice service — lets the test push VoiceServerEvents into the VM.
 // ---------------------------------------------------------------------------
-class _FakeSpeechService extends SpeechToTextService {
-  String textToReturn = 'What ramen do you have?';
-  bool throwOnStart = false;
-  bool didCancel = false;
+class _FakeVoiceSessionService extends VoiceSessionService {
+  final _ctrl = StreamController<VoiceServerEvent>.broadcast();
+  bool startCalled = false;
+  bool endCalled = false;
 
   @override
-  Future<bool> initialize() async => true;
+  Stream<VoiceServerEvent> get events => _ctrl.stream;
 
   @override
-  Future<void> startListening({
-    required Function(String) onResult,
-    Function(double)? onSoundLevel,
-  }) async {
-    if (throwOnStart) throw Exception('Fake mic error');
-    if (textToReturn.isNotEmpty) {
-      onResult(textToReturn);
-    }
-  }
+  Future<void> startSession() async => startCalled = true;
 
   @override
-  Future<void> stopListening() async {}
+  Future<void> endSession() async => endCalled = true;
+
+  void emit(VoiceServerEvent e) => _ctrl.add(e);
 
   @override
-  Future<void> cancel() async {
-    didCancel = true;
-  }
-
-  @override
-  void dispose() {}
+  void dispose() => _ctrl.close();
 }
 
 // ---------------------------------------------------------------------------
-// Fake TTS service — calls onComplete synchronously so state resolves instantly.
-// Set [throwOnSpeak] to true to simulate a TTS failure.
-// ---------------------------------------------------------------------------
-class _FakeTTSService extends TTSService {
-  bool throwOnSpeak = false;
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<void> speak(String text, {Function()? onComplete}) async {
-    if (throwOnSpeak) {
-      throw Exception('Fake TTS error');
-    }
-    // Call onComplete synchronously — mimics TTS finishing immediately
-    onComplete?.call();
-  }
-
-  @override
-  Future<void> stop() async {}
-
-  @override
-  void dispose() {}
-}
-
-// ---------------------------------------------------------------------------
-// Fake RAG service — returns [responseToReturn] or throws based on [shouldThrow].
-// Bypasses the Firebase embedding pipeline entirely.
-// ---------------------------------------------------------------------------
-class _FakeRAGService extends RAGService {
-  String responseToReturn = 'We have Tonkotsu, Shoyu, and Miso ramen!';
-  bool shouldThrow = false;
-  String? lastQuery;
-
-  // Always appear initialised so ConversationViewModel.initialize() is a no-op
-  @override
-  bool get isInitialized => true;
-
-  @override
-  Future<void> initialize() async {}
-
-  // Override getResponse entirely — bypasses _ensureInitialized and all Firebase calls
-  @override
-  Future<RagResult> getResponse(
-    String userMessage, {
-    List<Map<String, dynamic>>? conversationHistory,
-  }) async {
-    lastQuery = userMessage;
-    if (shouldThrow) throw Exception('Fake RAG error');
-    return RagResult(
-      content: responseToReturn,
-      similarityScore: 0.8,
-      path: RagPath.rag,
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Fake analytics service — all methods are no-ops so no Firebase calls are made.
+// Fake analytics — counts the events the VM is expected to log.
 // ---------------------------------------------------------------------------
 class _FakeAnalyticsService extends AnalyticsService {
+  int sessionStarted = 0;
+  int sessionEnded = 0;
+  int querySent = 0;
+  int errors = 0;
+
   @override
-  void logSessionStarted({required int hourOfDay, required int dayOfWeek}) {}
+  void logSessionStarted({required int hourOfDay, required int dayOfWeek}) => sessionStarted++;
   @override
-  void logSessionEnded({required int durationSeconds, required int messageCount, required String endedBy}) {}
+  void logSessionEnded({required int durationSeconds, required int messageCount, required String endedBy}) =>
+      sessionEnded++;
   @override
-  void logQuerySent({required String path, required double similarityScore, required int responseLatencyMs}) {}
+  void logQuerySent({required String path, required double similarityScore, required int responseLatencyMs}) =>
+      querySent++;
   @override
-  void logRagThresholdEvent({required double score, required bool passed}) {}
-  @override
-  void logTtsCompleted({required int responseLength}) {}
-  @override
-  void logErrorOccurred({required String errorType}) {}
+  void logErrorOccurred({required String errorType}) => errors++;
   @override
   void logFeedbackSubmitted({required bool hasText, required int messageCount}) {}
 }
 
-// ---------------------------------------------------------------------------
-// Fake Firestore service — all methods are no-ops so no Firebase calls are made.
-// FirestoreService._firestore is 'late' so constructing the object is now safe.
-// ---------------------------------------------------------------------------
 class _FakeFirestoreService extends FirestoreService {
   @override
   Future<void> createSession(session) async {}
@@ -141,216 +69,156 @@ class _FakeFirestoreService extends FirestoreService {
   Future<void> endSession(String sessionId) async {}
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+typedef _Harness = ({
+  ConversationViewModel vm,
+  _FakeVoiceSessionService voice,
+  _FakeAnalyticsService analytics,
+});
 
-/// Builds a ready-to-use ConversationViewModel with all fake dependencies.
-ConversationViewModel _buildVM({
-  _FakeSpeechService? speech,
-  _FakeTTSService? tts,
-  _FakeRAGService? rag,
-}) {
-  return ConversationViewModel(
-    speechService: speech ?? _FakeSpeechService(),
-    ttsService: tts ?? _FakeTTSService(),
-    ragService: rag ?? _FakeRAGService(),
-    sessionRepository: SessionRepository(
-      firestoreService: _FakeFirestoreService(),
-    ),
-    analyticsService: _FakeAnalyticsService(),
+_Harness _build() {
+  final voice = _FakeVoiceSessionService();
+  final analytics = _FakeAnalyticsService();
+  final vm = ConversationViewModel(
+    voiceService: voice,
+    sessionRepository: SessionRepository(firestoreService: _FakeFirestoreService()),
+    analyticsService: analytics,
   );
+  return (vm: vm, voice: voice, analytics: analytics);
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+/// Flush microtasks + the event loop so stream events reach the VM.
+Future<void> _settle() => Future<void>.delayed(Duration.zero);
+
+/// Connects a session: startSession + a `ready` event (creates the Firestore session).
+Future<void> _connect(_Harness h) async {
+  await h.vm.startSession();
+  h.voice.emit(const VoiceServerEvent(type: VoiceEventType.ready));
+  await _settle();
+}
 
 void main() {
-  setUpAll(() async {
-    await initFirebaseForTesting();
-  });
+  setUpAll(() async => initFirebaseForTesting());
 
-  // -------------------------------------------------------------------------
-  group('ConversationViewModel — Task 1.5: state machine transitions', () {
+  group('ConversationViewModel — voice state machine', () {
     test('a: initial state is idle', () {
-      final vm = _buildVM();
-      expect(vm.state, ConversationState.idle);
-      expect(vm.isIdle, isTrue);
+      final h = _build();
+      expect(h.vm.state, ConversationState.idle);
+      expect(h.vm.isIdle, isTrue);
     });
 
-    test('b: startListening() from idle → state becomes listening', () async {
-      // Use a speech service that does NOT call onResult so we stay in listening state
-      final speech = _FakeSpeechService()..textToReturn = '';
-      final vm = _buildVM(speech: speech);
-      await vm.initialize();
-
-      await vm.startListening();
-      expect(vm.state, ConversationState.listening);
-      expect(vm.isListening, isTrue);
+    test('b: startSession → processing (connecting) and service called', () async {
+      final h = _build();
+      await h.vm.startSession();
+      expect(h.voice.startCalled, isTrue);
+      expect(h.vm.state, ConversationState.processing);
     });
 
-    test('c: cancelListening() from listening → state returns to idle', () async {
-      final speech = _FakeSpeechService()..textToReturn = '';
-      final vm = _buildVM(speech: speech);
-      await vm.initialize();
-
-      await vm.startListening();
-      expect(vm.isListening, isTrue);
-
-      await vm.cancelListening();
-      expect(vm.state, ConversationState.idle);
-      expect(vm.isIdle, isTrue);
+    test('c: ready → listening, session + analytics started', () async {
+      final h = _build();
+      await _connect(h);
+      expect(h.vm.state, ConversationState.listening);
+      expect(h.vm.hasActiveSession, isTrue);
+      expect(h.analytics.sessionStarted, 1);
     });
 
-    test('d: startListening() when not idle → state unchanged (prevents duplicate calls)', () async {
-      final speech = _FakeSpeechService()..textToReturn = '';
-      final vm = _buildVM(speech: speech);
-      await vm.initialize();
+    test('d: agent states map to conversation states', () async {
+      final h = _build();
+      await _connect(h);
 
-      await vm.startListening();
-      expect(vm.isListening, isTrue);
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.agentState, agentState: VoiceAgentState.speaking));
+      await _settle();
+      expect(h.vm.state, ConversationState.speaking);
 
-      // Calling startListening again while already listening must be a no-op
-      await vm.startListening();
-      expect(vm.isListening, isTrue,
-          reason: 'Second startListening call should not change state');
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.agentState, agentState: VoiceAgentState.thinking));
+      await _settle();
+      expect(h.vm.state, ConversationState.processing);
+
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.agentState, agentState: VoiceAgentState.listening));
+      await _settle();
+      expect(h.vm.state, ConversationState.listening);
     });
 
-    test('e: successful question flow → idle → listening → processing → speaking → idle', () async {
-      // Collect all state changes in order
-      final states = <ConversationState>[];
-      final vm = _buildVM();
-      await vm.initialize();
-      vm.addListener(() => states.add(vm.state));
+    test('e: transcripts populate userInput and aiResponse', () async {
+      final h = _build();
+      await _connect(h);
 
-      await vm.startListening();
-      await vm.stopListeningAndProcess();
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.userTranscript, text: 'what ramen do you have'));
+      await _settle();
+      expect(h.vm.userInput, 'what ramen do you have');
 
-      // Allow async callbacks (TTS onComplete) to resolve
-      await Future.microtask(() {});
-
-      expect(states, containsAllInOrder([
-        ConversationState.listening,
-        ConversationState.processing,
-        ConversationState.speaking,
-        ConversationState.idle,
-      ]));
-      expect(vm.isIdle, isTrue, reason: 'Should return to idle after TTS completes');
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.agentTranscript, text: 'We have Kotteri and Shoyu!'));
+      await _settle();
+      expect(h.vm.aiResponse, 'We have Kotteri and Shoyu!');
     });
 
-    test('f: aiResponse is populated after successful question', () async {
-      final rag = _FakeRAGService()
-        ..responseToReturn = 'Try our Tonkotsu!';
-      final vm = _buildVM(rag: rag);
-      await vm.initialize();
+    test('f: userFinal logs a message + query; agentFinal logs a message', () async {
+      final h = _build();
+      await _connect(h);
+      final baseCount = h.vm.messageCount;
 
-      await vm.startListening();
-      await vm.stopListeningAndProcess();
-      await Future.microtask(() {});
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.userFinal, text: 'do you have spicy ramen'));
+      await _settle();
+      expect(h.vm.messageCount, greaterThan(baseCount));
+      expect(h.analytics.querySent, 1);
 
-      expect(vm.aiResponse, equals('Try our Tonkotsu!'));
+      final afterUser = h.vm.messageCount;
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.agentFinal, text: 'Yes, the spicy miso!'));
+      await _settle();
+      expect(h.vm.messageCount, greaterThan(afterUser));
     });
 
-    test('g: stopListeningAndProcess with empty speech → error state, then auto-recovers to idle', () async {
-      // Empty speech (no words recognised) should trigger an error
-      final speech = _FakeSpeechService()..textToReturn = '';
-      final vm = _buildVM(speech: speech);
-      await vm.initialize();
+    test('g: ended → idle, session cleared and logged', () async {
+      final h = _build();
+      await _connect(h);
+      expect(h.vm.hasActiveSession, isTrue);
 
-      await vm.startListening();
-      await vm.stopListeningAndProcess();
-
-      // Should go to error or back to idle immediately (no speech detected branch)
-      expect(
-        vm.state == ConversationState.error || vm.state == ConversationState.idle,
-        isTrue,
-        reason: 'Empty speech should result in error or idle, not processing',
-      );
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.ended));
+      await _settle();
+      expect(h.vm.state, ConversationState.idle);
+      expect(h.vm.hasActiveSession, isFalse);
+      expect(h.analytics.sessionEnded, 1);
     });
 
-    test('h: RAG error → state becomes error, errorMessage is set', () async {
-      final rag = _FakeRAGService()..shouldThrow = true;
-      final vm = _buildVM(rag: rag);
-      await vm.initialize();
+    test('h: error → error state with message, logged', () async {
+      final h = _build();
+      await _connect(h);
 
-      await vm.startListening();
-      await vm.stopListeningAndProcess();
-      await Future.microtask(() {});
-
-      expect(vm.hasError, isTrue);
-      expect(vm.errorMessage, isNotEmpty);
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.error, errorMessage: 'Voice connection failed.'));
+      await _settle();
+      expect(h.vm.hasError, isTrue);
+      expect(h.vm.errorMessage, isNotEmpty);
+      expect(h.analytics.errors, 1);
     });
 
-    test('i: TTS error does NOT block state — returns to idle anyway', () async {
-      // TTS failing should not leave the UI stuck — user already has the text response
-      final tts = _FakeTTSService()..throwOnSpeak = true;
-      final vm = _buildVM(tts: tts);
-      await vm.initialize();
+    test('i: endSession → idle, service ended, session cleared', () async {
+      final h = _build();
+      await _connect(h);
 
-      await vm.startListening();
-      await vm.stopListeningAndProcess();
-      await Future.microtask(() {});
-
-      // Either error state (with auto-recovery) or idle — either way not stuck in speaking/processing
-      expect(
-        vm.state == ConversationState.error ||
-            vm.state == ConversationState.idle ||
-            vm.state == ConversationState.speaking,
-        isTrue,
-        reason: 'TTS failure must not leave state stuck at processing',
-      );
+      await h.vm.endSession();
+      await _settle();
+      expect(h.voice.endCalled, isTrue);
+      expect(h.vm.state, ConversationState.idle);
+      expect(h.vm.hasActiveSession, isFalse);
     });
 
-    test('j: reset() from any state → idle, clears input and response', () async {
-      final vm = _buildVM();
-      await vm.initialize();
+    test('j: inactivity failsafe ends the session', () async {
+      final h = _build();
+      await _connect(h);
+      expect(h.vm.hasActiveSession, isTrue);
 
-      // Put the VM into a non-idle state
-      await vm.startListening();
-      expect(vm.isListening, isTrue);
-
-      vm.reset();
-
-      expect(vm.state, ConversationState.idle);
-      expect(vm.userInput, isEmpty);
-      expect(vm.aiResponse, isEmpty);
-      expect(vm.errorMessage, isEmpty);
+      h.vm.triggerInactivityForTesting();
+      await _settle();
+      expect(h.voice.endCalled, isTrue);
+      expect(h.vm.hasActiveSession, isFalse);
     });
 
-    test('k: hasActiveSession is false before first question', () {
-      final vm = _buildVM();
-      expect(vm.hasActiveSession, isFalse);
-    });
+    test('k: startSession is a no-op while already connected', () async {
+      final h = _build();
+      await _connect(h);
+      h.voice.startCalled = false;
 
-    test('l: hasActiveSession becomes true after a question is processed', () async {
-      final vm = _buildVM();
-      await vm.initialize();
-
-      await vm.startListening();
-      await vm.stopListeningAndProcess();
-      await Future.microtask(() {});
-
-      expect(vm.hasActiveSession, isTrue);
-    });
-
-    test('m: inactivity expiry → session is cleared', () async {
-      // Uses triggerInactivityForTesting() to simulate the 90-second timer firing
-      // without actually waiting 90 real seconds.
-      final vm = _buildVM();
-      await vm.initialize();
-
-      // Establish a session by completing a question
-      await vm.startListening();
-      await vm.stopListeningAndProcess();
-      await Future.microtask(() {});
-      expect(vm.hasActiveSession, isTrue);
-
-      // Simulate the inactivity timer firing
-      vm.triggerInactivityForTesting();
-
-      expect(vm.hasActiveSession, isFalse,
-          reason: 'Session must be cleared when inactivity timer expires');
+      await h.vm.startSession();
+      expect(h.voice.startCalled, isFalse, reason: 'should not start a second session');
     });
   });
 }

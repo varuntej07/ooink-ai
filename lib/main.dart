@@ -7,9 +7,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'firebase_options.dart';
 import 'Views/home_screen.dart';
 import 'ViewModels/conversation_vm.dart';
-import 'services/speech_to_text_service.dart';
-import 'services/tts_service.dart';
-import 'services/rag_service.dart';
+import 'services/voice_session_service.dart';
 import 'services/analytics_service.dart';
 import 'services/firestore_service.dart';
 import 'repositories/session_repository.dart';
@@ -60,9 +58,7 @@ class _OoinkAppState extends State<OoinkApp> {
   Future<void> _initializeApp() async {
     try {
       // Initialize all services
-      final speechService = SpeechToTextService();
-      final ttsService = TTSService();
-      final ragService = RAGService();
+      final voiceService = VoiceSessionService();
       final analyticsService = AnalyticsService();
 
       final firestoreService = FirestoreService();
@@ -70,14 +66,12 @@ class _OoinkAppState extends State<OoinkApp> {
 
       // Create ViewModel
       final viewModel = ConversationViewModel(
-        speechService: speechService,
-        ttsService: ttsService,
-        ragService: ragService,
+        voiceService: voiceService,
         sessionRepository: sessionRepository,
         analyticsService: analyticsService,
       );
 
-      // AWAIT initialization - this ensures RAG knowledge base loads before UI shows
+      // No on-device models to load anymore — returns immediately.
       await viewModel.initialize();
 
       if (mounted) {

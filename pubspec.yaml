@@ -37,11 +37,8 @@ dependencies:
   provider:
   cloud_firestore:
   firebase_core:
-  firebase_ai:
-  flutter_tts:
   lottie:
   kiosk_mode:
-  speech_to_text:
   firebase_crashlytics:
   firebase_analytics:
   firebase_performance:
@@ -49,6 +46,8 @@ dependencies:
   http:
   cloud_functions:
   wakelock_plus: # Keeps screen awake for all-day operation
+  livekit_client: ^2.7.0 # Real-time voice (STT/LLM/TTS run server-side in the LiveKit agent)
+  permission_handler: # Runtime mic permission for LiveKit voice capture
 
 dev_dependencies:
   flutter_test:

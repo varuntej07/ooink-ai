@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../ViewModels/conversation_vm.dart';
 import 'feedback_screen.dart';
+import 'widgets/voice_wave_button.dart';
 
 /// Displays pig bot images with state-based animations:
 /// - Idle/Listening/Processing: static pig-bot-idle.png
@@ -414,55 +415,48 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// The single voice control: tap the wave bars to start; tap again to stop.
+  /// (The session also auto-ends after 3 min of silence, server-side.) The bars
+  /// stay still when off and ride the Pig's live voice when it's talking.
   Widget _buildActionButton(
     BuildContext context,
     ConversationViewModel viewModel,
   ) {
-    // "Connecting" = processing before the room is up (no Firestore session yet).
-    final bool connecting =
-        viewModel.isProcessing && !viewModel.hasActiveSession;
+    final VoiceWaveMode mode;
+    final Color color;
 
-    String buttonText;
-    VoidCallback? onPressed;
-    Color buttonColor;
-
-    if (viewModel.isIdle || viewModel.hasError) {
-      buttonText = viewModel.hasError ? 'Tap to Try Again' : 'Tap to Talk';
-      onPressed = () => viewModel.startSession();
-      buttonColor = Colors.pink;
-    } else if (connecting) {
-      buttonText = 'Connecting...';
-      onPressed = null; // disabled until the room is ready
-      buttonColor = Colors.grey;
+    if (viewModel.isIdle) {
+      mode = VoiceWaveMode.off;
+      color = Colors.pink;
+    } else if (viewModel.hasError) {
+      mode = VoiceWaveMode.off;
+      color = Colors.red;
+    } else if (viewModel.isProcessing && !viewModel.hasActiveSession) {
+      // Connecting — room/agent not ready yet.
+      mode = VoiceWaveMode.connecting;
+      color = Colors.blueGrey;
     } else {
-      // Active conversation (listening, thinking, or speaking) — tap to end.
-      buttonText = 'Stop Talking';
-      onPressed = () => viewModel.endSession();
-      buttonColor = viewModel.isSpeaking
-          ? Colors.blue
+      // Active conversation (listening, thinking, or speaking).
+      mode = VoiceWaveMode.active;
+      color = viewModel.isSpeaking
+          ? Colors.pink
           : viewModel.isProcessing
-              ? Colors.grey
-              : Colors.orange;
+              ? Colors.blue
+              : Colors.orange; // listening
     }
 
-    return SizedBox(
-      width: double.infinity,
-      height: 70,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: buttonColor,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(35),
-          ),
-          elevation: 8,
-        ),
-        child: Text(
-          buttonText,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
+    return VoiceWaveButton(
+      key: const Key('voice_wave_button'),
+      mode: mode,
+      color: color,
+      audioLevels: viewModel.audioLevels,
+      onTap: () {
+        if (viewModel.isIdle || viewModel.hasError) {
+          viewModel.startSession();
+        } else {
+          viewModel.endSession();
+        }
+      },
     );
   }
 }

@@ -7,7 +7,10 @@ enum VoiceAgentState { initializing, listening, thinking, speaking, idle }
 
 /// Events VoiceSessionService emits to the ViewModel.
 enum VoiceEventType {
-  ready, // connected to the room, agent dispatched
+  ready, // ROOM connected (agent dispatch requested) — NOT yet agent-ready. The UI
+  // stays in "Connecting…" until the first agentState arrives; if the agent never
+  // joins, an `error` event is emitted instead. Live audio amplitudes for the wave
+  // bars travel on VoiceSessionService.audioLevels, a separate stream.
   agentState, // agent conversational state changed
   userTranscript, // live user speech-to-text (for display)
   agentTranscript, // live agent text (for display)

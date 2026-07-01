@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'firebase_options.dart';
 import 'Views/home_screen.dart';
@@ -31,6 +32,11 @@ void main() async {
   // This prevents iPad/Android tablet from sleeping and interrupting customer interactions
   // for restaurant deployment where the app runs continuously
   await WakelockPlus.enable();
+
+  // Ask for the mic once at startup so kiosk staff can grant it during setup and
+  // every later voice session connects without an in-conversation prompt. Non-fatal
+  // if denied here — LiveKit still prompts when it first enables the mic.
+  await Permission.microphone.request();
 
   runApp(const OoinkApp());
 }

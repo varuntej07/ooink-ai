@@ -19,13 +19,21 @@ void main() {
     _mockAssetBundle();
   });
 
+  // The image cache is global mutable state: once one test resolves the mock pig
+  // PNG, later tests would size the width/height:infinity image from that cached
+  // 1x1 decode instead of filling its box. Clear it so each test starts clean.
+  setUp(() {
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
+  });
+
   testWidgets('all conversation states render without overflow', (tester) async {
     final scenarios =
         <
           ({
             ConversationState state,
             String statusText,
-            String buttonText,
             String userInput,
             String aiResponse,
             String errorMessage,
@@ -35,7 +43,6 @@ void main() {
           (
             state: ConversationState.idle,
             statusText: "Hey! I'm your AI Pig!",
-            buttonText: 'Tap to Talk',
             userInput: '',
             aiResponse: '',
             errorMessage: '',
@@ -44,7 +51,6 @@ void main() {
           (
             state: ConversationState.listening,
             statusText: 'Listening...',
-            buttonText: 'Stop Talking',
             userInput: 'Tonkotsu please',
             aiResponse: '',
             errorMessage: '',
@@ -54,7 +60,6 @@ void main() {
             // processing before the room is up = "Connecting..."
             state: ConversationState.processing,
             statusText: 'Thinking...',
-            buttonText: 'Connecting...',
             userInput: '',
             aiResponse: '',
             errorMessage: '',
@@ -63,7 +68,6 @@ void main() {
           (
             state: ConversationState.speaking,
             statusText: 'Oink oink! \u{1F437}',
-            buttonText: 'Stop Talking',
             userInput: 'Tell me about shoyu',
             aiResponse: 'Shoyu is savory and balanced.',
             errorMessage: '',
@@ -72,7 +76,6 @@ void main() {
           (
             state: ConversationState.error,
             statusText: 'Tap to try again',
-            buttonText: 'Tap to Try Again',
             userInput: '',
             aiResponse: '',
             errorMessage: 'Oink! Something went wrong.',
@@ -93,7 +96,8 @@ void main() {
       );
 
       expect(find.text(scenario.statusText), findsOneWidget);
-      expect(find.text(scenario.buttonText), findsOneWidget);
+      // The single wave-bar voice control renders in every state.
+      expect(find.byKey(const Key('voice_wave_button')), findsOneWidget);
       if (scenario.aiResponse.isNotEmpty) {
         expect(find.text(scenario.aiResponse), findsOneWidget);
       }
@@ -143,7 +147,10 @@ Future<void> _pumpHomeScreen(
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = logicalSize;
-  addTearDown(() {
+  addTearDown(() async {
+    // Unmount so HomeScreen's timers and the VoiceWaveButton's animation controller
+    // dispose — otherwise an active ticker/timer leaks into the next test.
+    await tester.pumpWidget(const SizedBox.shrink());
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
   });

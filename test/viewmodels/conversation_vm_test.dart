@@ -113,12 +113,25 @@ void main() {
       expect(h.vm.state, ConversationState.processing);
     });
 
-    test('c: ready → listening, session + analytics started', () async {
+    test('c: ready → still connecting (processing) until agent joins; session + analytics started',
+        () async {
       final h = _build();
       await _connect(h);
-      expect(h.vm.state, ConversationState.listening);
+      // Room is up but the Pig agent hasn't reported a state yet — stay "Connecting…".
+      expect(h.vm.state, ConversationState.processing);
       expect(h.vm.hasActiveSession, isTrue);
       expect(h.analytics.sessionStarted, 1);
+
+      // A real agent state then advances the UI out of "Connecting…".
+      h.voice.emit(const VoiceServerEvent(
+          type: VoiceEventType.agentState, agentState: VoiceAgentState.listening));
+      await _settle();
+      expect(h.vm.state, ConversationState.listening);
+    });
+
+    test('c2: audioLevels default to empty so the wave bars sit still', () {
+      final h = _build();
+      expect(h.vm.audioLevels.value, isEmpty);
     });
 
     test('d: agent states map to conversation states', () async {

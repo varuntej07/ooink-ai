@@ -9,6 +9,7 @@ Production:  python main.py start    (what the Docker CMD runs on LiveKit Cloud)
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from livekit import agents
@@ -18,8 +19,14 @@ from livekit.plugins import silero
 from agent.voice_agent import entrypoint
 
 # .env.local first (LiveKit CLI convention), then a plain .env as fallback.
-load_dotenv(".env.local")
-load_dotenv()
+# Anchor to this file's directory (not the CWD): LiveKit spawns each job in a
+# subprocess that re-imports this module, often from a different working
+# directory, so a relative ".env.local" wouldn't be found and the job would
+# crash with "GOOGLE_API_KEY is required". An absolute path loads the keys in
+# both the worker and every spawned job process.
+_ENV_DIR = Path(__file__).resolve().parent
+load_dotenv(_ENV_DIR / ".env.local")
+load_dotenv(_ENV_DIR / ".env")
 
 server = AgentServer()
 

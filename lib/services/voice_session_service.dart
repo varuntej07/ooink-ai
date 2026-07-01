@@ -18,6 +18,16 @@ class VoiceSessionService {
   final _events = StreamController<VoiceServerEvent>.broadcast();
   Stream<VoiceServerEvent> get events => _events.stream;
 
+  // Real-time amplitude of the Pig's voice, one value per visualizer band.
+  // Drives the on-screen wave bars. Emits an empty list when the agent is silent
+  // / not connected so the bars fall back to their still baseline.
+  final _audioLevels = StreamController<List<double>>.broadcast();
+  Stream<List<double>> get audioLevels => _audioLevels.stream;
+
+  // The agent's audio track is turned into band magnitudes by this visualizer.
+  AudioVisualizer? _visualizer;
+  RemoteAudioTrack? _visualizedTrack;
+
   // Diffing state so we only emit when something actually changes.
   VoiceAgentState? _lastAgentState;
   final Map<String, String> _lastTextById = {};
@@ -44,7 +54,13 @@ class VoiceSessionService {
       );
     });
 
-    final session = Session.fromConfigurableTokenSource(tokenSource);
+    // preConnectAudio: false → enable the mic *after* the room connects. The mic
+    // permission is already granted at app launch (main.dart), so we don't need the
+    // pre-connect buffer, and this keeps the connect flow deterministic.
+    final session = Session.fromConfigurableTokenSource(
+      tokenSource,
+      options: SessionOptions(preConnectAudio: false),
+    );
     _session = session;
     session.addListener(_onSessionChanged);
 
@@ -65,13 +81,22 @@ class VoiceSessionService {
       _connectedOnce = true;
     }
 
-    // Surface a session-level error once.
+    // Surface a session-level (transport) error once.
     if (session.error != null && !_errored) {
       _emitError('Voice connection dropped. Tap to try again.');
       return;
     }
 
+    // The agent never joined (backend not running / bad keys) or left the room:
+    // LiveKit marks it failed after the connect timeout. Surface it instead of
+    // sitting silently in a fake "listening" state.
+    if (session.agent.error != null && !_errored) {
+      _emitError("Pig couldn't connect. Tap to try again.");
+      return;
+    }
+
     _emitAgentState(session.agent.agentState);
+    _syncVisualizer(session.agent.audioTrack);
     _emitTranscripts(session.messages);
 
     // Room closed (user tapped stop, or the agent's idle watcher deleted the room).
@@ -89,6 +114,53 @@ class VoiceSessionService {
     if (mapped == null || mapped == _lastAgentState) return;
     _lastAgentState = mapped;
     _events.add(VoiceServerEvent(type: VoiceEventType.agentState, agentState: mapped));
+  }
+
+  /// Attaches (or detaches) the audio visualizer to the agent's voice track so the
+  /// UI wave bars react to the Pig's real amplitude. Recreates it when the track
+  /// changes; clears the levels to a still baseline when there's no track.
+  void _syncVisualizer(RemoteAudioTrack? track) {
+    if (identical(track, _visualizedTrack)) return; // no change
+    _visualizedTrack = track;
+    _disposeVisualizer();
+    if (track == null) {
+      if (!_audioLevels.isClosed) _audioLevels.add(const []);
+      return;
+    }
+    _startVisualizer(track);
+  }
+
+  Future<void> _startVisualizer(RemoteAudioTrack track) async {
+    try {
+      final v = createVisualizer(
+        track,
+        options: const AudioVisualizerOptions(barCount: 5, centeredBands: true),
+      );
+      _visualizer = v;
+      v.events.listen((event) {
+        if (_audioLevels.isClosed) return;
+        final levels =
+            event.event.whereType<num>().map((n) => n.toDouble()).toList(growable: false);
+        _audioLevels.add(levels);
+      });
+      await v.start();
+      // Track may have been swapped out while we awaited start(); tidy up if so.
+      if (!identical(_visualizer, v)) {
+        await v.stop();
+        await v.dispose();
+      }
+    } catch (e, st) {
+      Logger.error('Audio visualizer failed to start', e, st);
+    }
+  }
+
+  void _disposeVisualizer() {
+    final v = _visualizer;
+    _visualizer = null;
+    if (v != null) {
+      v.stop();
+      v.dispose();
+    }
   }
 
   void _emitTranscripts(List<ReceivedMessage> messages) {
@@ -157,6 +229,8 @@ class VoiceSessionService {
   }
 
   void _resetState() {
+    _disposeVisualizer();
+    _visualizedTrack = null;
     _lastAgentState = null;
     _lastTextById.clear();
     _finalizedIds.clear();
@@ -167,6 +241,9 @@ class VoiceSessionService {
 
   /// Ends the session (user tapped stop). Disconnects the room.
   Future<void> endSession() async {
+    _disposeVisualizer();
+    _visualizedTrack = null;
+    if (!_audioLevels.isClosed) _audioLevels.add(const []);
     final session = _session;
     if (session == null) return;
     session.removeListener(_onSessionChanged);
@@ -180,6 +257,7 @@ class VoiceSessionService {
   }
 
   void dispose() {
+    _disposeVisualizer();
     _session?.removeListener(_onSessionChanged);
     final session = _session;
     _session = null;
@@ -188,5 +266,6 @@ class VoiceSessionService {
       session.dispose();
     }
     _events.close();
+    _audioLevels.close();
   }
 }

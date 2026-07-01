@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show ChangeNotifier, visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show ChangeNotifier, ValueListenable, ValueNotifier, visibleForTesting;
 import '../models/voice_session_status.dart';
 import '../services/analytics_service.dart';
 import '../services/voice_session_service.dart';
@@ -43,6 +44,13 @@ class ConversationViewModel extends ChangeNotifier {
   static const Duration _sessionTimeout = Duration(minutes: 5);
 
   StreamSubscription<VoiceServerEvent>? _voiceSub;
+  StreamSubscription<List<double>>? _audioLevelsSub;
+
+  // Real-time wave-bar amplitudes for the Pig's voice. Exposed as a ValueListenable
+  // so only the wave widget rebuilds on each audio frame — not the whole Consumer
+  // tree (which would thrash at audio frame rate).
+  final ValueNotifier<List<double>> _audioLevels = ValueNotifier<List<double>>(const []);
+  ValueListenable<List<double>> get audioLevels => _audioLevels;
 
   ConversationViewModel({
     required VoiceSessionService voiceService,
@@ -52,6 +60,9 @@ class ConversationViewModel extends ChangeNotifier {
         _sessionRepository = sessionRepository,
         _analyticsService = analyticsService {
     _voiceSub = _voiceService.events.listen(_handleVoiceEvent);
+    _audioLevelsSub = _voiceService.audioLevels.listen((levels) {
+      _audioLevels.value = levels;
+    });
   }
 
   // Getters
@@ -92,11 +103,12 @@ class ConversationViewModel extends ChangeNotifier {
   void _handleVoiceEvent(VoiceServerEvent event) {
     switch (event.type) {
       case VoiceEventType.ready:
+        // Room connected, but the Pig agent hasn't necessarily joined yet. Create
+        // the Firestore session, but stay in "Connecting…" (processing) until a real
+        // agent state arrives via VoiceEventType.agentState. If the agent never joins,
+        // the service emits an error instead (no more silent, fake "Listening").
         _ensureSession();
         _resetInactivityTimer();
-        if (_state == ConversationState.processing) {
-          _updateState(ConversationState.listening);
-        }
         break;
 
       case VoiceEventType.agentState:
@@ -198,6 +210,7 @@ class ConversationViewModel extends ChangeNotifier {
     _sessionRepository.clearSession();
     _userInput = '';
     _aiResponse = '';
+    _audioLevels.value = const []; // bars fall still when the session ends
   }
 
   void _resetInactivityTimer() {
@@ -245,6 +258,8 @@ class ConversationViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _voiceSub?.cancel();
+    _audioLevelsSub?.cancel();
+    _audioLevels.dispose();
     _inactivityTimer?.cancel();
     _sessionRepository.dispose();
     _voiceService.dispose();

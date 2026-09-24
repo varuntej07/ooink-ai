@@ -1,5 +1,22 @@
 const {onCall, HttpsError} = require('firebase-functions/v2/https');
+const {defineSecret} = require('firebase-functions/params');
 const {initializeApp} = require('firebase-admin/app');
+const {timingSafeEqual} = require('crypto');
+
+// Shared secret the LiveKit agent sends in the x-ooink-embed-key header
+// (backend/agent/rag_pipeline.py). Without it the public URL could be used to
+// run up Vertex AI spend. Set with: firebase functions:secrets:set EMBED_SHARED_SECRET
+const EMBED_SHARED_SECRET = defineSecret('EMBED_SHARED_SECRET');
+
+function isAuthorizedCaller(request) {
+  const expected = EMBED_SHARED_SECRET.value();
+  const header = request.rawRequest?.headers?.['x-ooink-embed-key'];
+  const given = Array.isArray(header) ? header[0] : header;
+  if (!expected || typeof given !== 'string') return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 // Initialize Firebase Admin
 initializeApp();
@@ -16,6 +33,8 @@ const ENDPOINT = `projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google
 // getLiveKitToken, which shares this module via index.js, does not pay the
 // @google-cloud/aiplatform load on its cold start.
 let vertex = null;
+// Flips after the first successful embed on this instance (for cold-start tagging).
+let warmInstance = false;
 function getVertex() {
   if (!vertex) {
     const aiplatform = require('@google-cloud/aiplatform');
@@ -41,16 +60,28 @@ const generateEmbedding = onCall(
   {
     region: 'us-central1',
     memory: '512MiB',
+    // A full vCPU during requests: with the fractional CPU that comes with
+    // 512MiB, the lazy @google-cloud/aiplatform load took ~40 s on a cold start
+    // (observed 2026-09-24), far past the agent's 3 s embed timeout. Billed only
+    // while a request is running.
+    cpu: 1,
     timeoutSeconds: 45,
     maxInstances: 10,
     cors: true,
     consumeAppCheckToken: false,  // Disable App Check validation
+    secrets: [EMBED_SHARED_SECRET],
   },
   async (request) => {
     console.log('🚀 Cloud Function triggered - generateEmbedding');
 
+    if (!isAuthorizedCaller(request)) {
+      console.error('❌ Missing or invalid x-ooink-embed-key');
+      throw new HttpsError('unauthenticated', 'Missing or invalid embed key');
+    }
+
     const {text} = request.data;            // Extract text from request
-    console.log(`📝 Received text (length: ${text?.length}): "${text?.substring(0, 100)}..."`);
+    // Customer speech: log its size only, never its content.
+    console.log(`📝 Received text (length: ${text?.length})`);
 
     if (!text || typeof text !== 'string') {
       console.error('❌ Invalid text parameter');
@@ -89,11 +120,20 @@ const generateEmbedding = onCall(
 
       // Make the prediction request
       console.log('⏳ Calling Vertex AI API...');
+      const vertexStarted = Date.now();
       const [response] = await client.predict({
         endpoint,
         instances,
       });
       console.log('✅ Received response from Vertex AI');
+      // Structured timing so Vertex API time can be separated from instance cold
+      // start (Cloud Run's request latency covers the whole invocation).
+      console.log(JSON.stringify({
+        event: 'embed_timing',
+        vertex_ms: Date.now() - vertexStarted,
+        cold: !warmInstance,
+      }));
+      warmInstance = true;
 
       // Extract embedding from response
       console.log(`🔍 Processing response... Predictions count: ${response.predictions?.length}`);
@@ -121,13 +161,13 @@ const generateEmbedding = onCall(
         const valuesList = valuesStruct?.listValue?.values;
 
         if (!valuesList) {
-          console.error('❌ Response structure:', JSON.stringify(prediction, null, 2));
+          console.error('❌ Response structure keys:', Object.keys(prediction || {}));
           throw new Error('Unexpected response format from Vertex AI');
         }
 
         embedding = valuesList.map((v) => v.numberValue);
       } else {
-        console.error('❌ Response structure:', JSON.stringify(prediction, null, 2));
+        console.error('❌ Response structure keys:', Object.keys(prediction || {}));
         throw new Error('Unexpected response format from Vertex AI');
       }
 
@@ -155,8 +195,8 @@ const generateEmbedding = onCall(
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
       console.error('Error details:', error.details);
-      console.error('Full error:', JSON.stringify(error, null, 2));
-      console.error('Stack trace:', error.stack);
+      console.error('Error keys:', Object.keys(error || {}));
+      console.error('Stack trace:', error.stack);  // server-side logs only, never returned
 
       // Return appropriate error to client
       if (error.code === 'PERMISSION_DENIED' || error.code === 7) {
@@ -186,11 +226,8 @@ const generateEmbedding = onCall(
         );
       } else {
         console.error('💥 Unknown error - returning internal error to client');
-        throw new HttpsError(
-          'internal',
-          `Failed to generate embedding: ${error.message}`,
-          error.stack
-        );
+        // Generic message only: the raw Vertex/gRPC message and stack stay in Cloud Logging.
+        throw new HttpsError('internal', 'Failed to generate embedding');
       }
     }
   }

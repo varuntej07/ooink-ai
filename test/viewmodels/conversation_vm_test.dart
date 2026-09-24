@@ -44,6 +44,7 @@ class _FakeAnalyticsService extends AnalyticsService {
   int sessionStarted = 0;
   int sessionEnded = 0;
   int querySent = 0;
+  int? lastLatencyMs;
   int errors = 0;
 
   @override
@@ -52,8 +53,10 @@ class _FakeAnalyticsService extends AnalyticsService {
   void logSessionEnded({required int durationSeconds, required int messageCount, required String endedBy}) =>
       sessionEnded++;
   @override
-  void logQuerySent({required String path, required double similarityScore, required int responseLatencyMs}) =>
-      querySent++;
+  void logQuerySent({required String path, required double similarityScore, required int responseLatencyMs}) {
+    querySent++;
+    lastLatencyMs = responseLatencyMs;
+  }
   @override
   void logErrorOccurred({required String errorType}) => errors++;
   @override
@@ -164,7 +167,7 @@ void main() {
       expect(h.vm.aiResponse, 'We have Kotteri and Shoyu!');
     });
 
-    test('f: userFinal logs a message + query; agentFinal logs a message', () async {
+    test('f: userFinal logs a message; agentFinal logs a message', () async {
       final h = _build();
       await _connect(h);
       final baseCount = h.vm.messageCount;
@@ -172,12 +175,28 @@ void main() {
       h.voice.emit(const VoiceServerEvent(type: VoiceEventType.userFinal, text: 'do you have spicy ramen'));
       await _settle();
       expect(h.vm.messageCount, greaterThan(baseCount));
-      expect(h.analytics.querySent, 1);
+      expect(h.analytics.querySent, 0, reason: 'latency is only known once the agent replies');
 
       final afterUser = h.vm.messageCount;
       h.voice.emit(const VoiceServerEvent(type: VoiceEventType.agentFinal, text: 'Yes, the spicy miso!'));
       await _settle();
       expect(h.vm.messageCount, greaterThan(afterUser));
+    });
+
+    test('f2: query latency is logged once per turn, from user transcript to first agent transcript', () async {
+      final h = _build();
+      await _connect(h);
+
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.userTranscript, text: 'do you have'));
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.userTranscript, text: 'do you have spicy ramen'));
+      await _settle();
+      expect(h.analytics.querySent, 0);
+
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.agentTranscript, text: 'Yes,'));
+      h.voice.emit(const VoiceServerEvent(type: VoiceEventType.agentTranscript, text: 'Yes, the spicy miso!'));
+      await _settle();
+      expect(h.analytics.querySent, 1, reason: 'only the first agent transcript of a turn closes the timer');
+      expect(h.analytics.lastLatencyMs, greaterThanOrEqualTo(0));
     });
 
     test('g: ended → idle, session cleared and logged', () async {

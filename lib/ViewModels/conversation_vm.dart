@@ -37,6 +37,11 @@ class ConversationViewModel extends ChangeNotifier {
   // Tracks when the session started so we can compute duration for session_ended.
   DateTime? _sessionStartTime;
 
+  // Last user transcript update of the current turn. Deepgram streams interim
+  // transcripts, so this approximates when the customer stopped talking; the first
+  // agent transcript after it closes the turn and yields the customer-felt latency.
+  DateTime? _turnStartedAt;
+
   // Failsafe inactivity timer. The real 3-minute idle end happens server-side
   // (the agent says goodbye and deletes the room); this is only a backup in
   // case connectivity drops and no `ended` event arrives.
@@ -118,12 +123,24 @@ class ConversationViewModel extends ChangeNotifier {
       case VoiceEventType.userTranscript:
         _userInput = event.text ?? '';
         _aiResponse = ''; // clear old answer while the user is asking
+        _turnStartedAt = DateTime.now();
         _resetInactivityTimer();
         notifyListeners();
         break;
 
       case VoiceEventType.agentTranscript:
         _aiResponse = event.text ?? '';
+        final turnStartedAt = _turnStartedAt;
+        if (turnStartedAt != null && _aiResponse.trim().isNotEmpty) {
+          // Score/path live server-side (see backend rag_lookup logs); the app can
+          // only measure the customer-felt wait for the reply.
+          _turnStartedAt = null;
+          _analyticsService.logQuerySent(
+            path: 'voice',
+            similarityScore: 0.0,
+            responseLatencyMs: DateTime.now().difference(turnStartedAt).inMilliseconds,
+          );
+        }
         notifyListeners();
         break;
 
@@ -131,12 +148,6 @@ class ConversationViewModel extends ChangeNotifier {
         final text = (event.text ?? '').trim();
         if (text.isNotEmpty) {
           _sessionRepository.addUserMessage(text); // Firestore log
-          // Score/path/latency now live server-side; log the query as a count.
-          _analyticsService.logQuerySent(
-            path: 'voice',
-            similarityScore: 0.0,
-            responseLatencyMs: 0,
-          );
         }
         _resetInactivityTimer();
         break;

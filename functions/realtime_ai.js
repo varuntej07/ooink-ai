@@ -1,22 +1,5 @@
 const {onCall, HttpsError} = require('firebase-functions/v2/https');
-const {defineSecret} = require('firebase-functions/params');
 const {initializeApp} = require('firebase-admin/app');
-const {timingSafeEqual} = require('crypto');
-
-// Shared secret the LiveKit agent sends in the x-ooink-embed-key header
-// (backend/agent/rag_pipeline.py). Without it the public URL could be used to
-// run up Vertex AI spend. Set with: firebase functions:secrets:set EMBED_SHARED_SECRET
-const EMBED_SHARED_SECRET = defineSecret('EMBED_SHARED_SECRET');
-
-function isAuthorizedCaller(request) {
-  const expected = EMBED_SHARED_SECRET.value();
-  const header = request.rawRequest?.headers?.['x-ooink-embed-key'];
-  const given = Array.isArray(header) ? header[0] : header;
-  if (!expected || typeof given !== 'string') return false;
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
 
 // Initialize Firebase Admin
 initializeApp();
@@ -69,15 +52,9 @@ const generateEmbedding = onCall(
     maxInstances: 10,
     cors: true,
     consumeAppCheckToken: false,  // Disable App Check validation
-    secrets: [EMBED_SHARED_SECRET],
   },
   async (request) => {
     console.log('🚀 Cloud Function triggered - generateEmbedding');
-
-    if (!isAuthorizedCaller(request)) {
-      console.error('❌ Missing or invalid x-ooink-embed-key');
-      throw new HttpsError('unauthenticated', 'Missing or invalid embed key');
-    }
 
     const {text} = request.data;            // Extract text from request
     // Customer speech: log its size only, never its content.

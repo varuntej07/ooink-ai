@@ -1,7 +1,8 @@
-"""RAG retrieval — Python port of the similarity logic in lib/services/rag_service.dart.
+"""RAG retrieval — the single source of truth for menu lookup (the former on-device
+lib/services/rag_service.dart was removed in the voice migration).
 
 Pipeline per user turn:
-1. Enrich the query with the last 2 prior user turns (same as the Dart version).
+1. Enrich the query with the last 2 prior user turns.
 2. Embed the enriched query via the existing Firebase `generateEmbedding` function
    (text-embedding-004, task_type RETRIEVAL_QUERY — no auth).
 3. Cosine similarity against all 52 menu chunks (numpy, off the event loop).
@@ -21,11 +22,32 @@ EMBEDDING_URL = os.getenv(
     "EMBEDDING_FUNCTION_URL",
     "https://us-central1-ooinkai.cloudfunctions.net/generateEmbedding",
 )
-RAG_THRESHOLD = 0.25          # matches AppConfig.minSimilarityThreshold
-TOP_K = 6                     # matches AppConfig.topKChunks
+RAG_THRESHOLD = 0.25          # single source of truth (see CLAUDE.md cross-component invariants)
+TOP_K = 6                     # single source of truth (see CLAUDE.md cross-component invariants)
 BELOW_THRESHOLD = "BELOW_THRESHOLD"
 
+# The embed call sits on the reply-latency path of every user turn. Keep it short:
+# on timeout/failure PigAgent falls back to the persona prompt instead of stalling.
+EMBED_TIMEOUT_S = 3.0
+
 _ASSETS_PATH = Path(__file__).resolve().parent.parent / "assets" / "menu_embeddings.json"
+
+# One HTTP client per process so the TLS handshake to the Cloud Function is paid
+# once, not on every user turn (httpx keeps the connection alive between calls).
+_http_client: httpx.AsyncClient | None = None
+
+
+def _client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(timeout=EMBED_TIMEOUT_S)
+    return _http_client
+
+
+def warm_up() -> None:
+    """Parse the embeddings file now (worker prewarm) so the first customer turn
+    does not pay for it."""
+    _load_chunks()
 
 
 @lru_cache(maxsize=1)
@@ -43,14 +65,13 @@ def _load_chunks() -> tuple[list[str], np.ndarray]:
 
 async def generate_embedding(text: str) -> list[float]:
     """Call the Firebase callable function. Response shape: {"result": {"embedding": [...]}}."""
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(
-            EMBEDDING_URL,
-            json={"data": {"text": text}},
-            headers={"Content-Type": "application/json"},
-        )
-        resp.raise_for_status()
-        return resp.json()["result"]["embedding"]
+    resp = await _client().post(
+        EMBEDDING_URL,
+        json={"data": {"text": text}},
+        headers={"Content-Type": "application/json"},
+    )
+    resp.raise_for_status()
+    return resp.json()["result"]["embedding"]
 
 
 def _rank(query_embedding: list[float]) -> tuple[list[int], float]:
@@ -66,7 +87,7 @@ def _rank(query_embedding: list[float]) -> tuple[list[int], float]:
 
 
 async def find_relevant_context(user_message: str, history: list[str]) -> tuple[str, float]:
-    """Mirror rag_service.dart: returns (context_text, top_score) or (BELOW_THRESHOLD, top_score).
+    """Returns (context_text, top_score) or (BELOW_THRESHOLD, top_score).
 
     `history` is the list of PRIOR user utterances (current message passed separately).
     """

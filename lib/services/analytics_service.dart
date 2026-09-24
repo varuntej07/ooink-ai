@@ -16,11 +16,13 @@ class AnalyticsService {
     ));
   }
 
-  /// Fired when session ends via inactivity timeout or manual reset
+  /// Fired when a session ends. [endedBy] is one of:
+  /// 'user' (tapped Stop) | 'agent' (server-side 3-min idle goodbye) |
+  /// 'timeout' (client 5-min failsafe) | 'error' | 'reset'
   void logSessionEnded({
     required int durationSeconds,
     required int messageCount,
-    required String endedBy, // 'timeout' | 'reset'
+    required String endedBy,
   }) {
     unawaited(_analytics.logEvent(
       name: 'session_ended',

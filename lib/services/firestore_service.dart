@@ -45,7 +45,7 @@ class FirestoreService {
     }
   }
 
-  /// Marks a session as ended/inactive, Called when the 90-second timer expires or app shuts down
+  /// Marks a session as ended/inactive, Called when the session ends or the app shuts down
   Future<void> endSession(String sessionId) async {
     try {
       await _firestore.collection('sessions').doc(sessionId).update({

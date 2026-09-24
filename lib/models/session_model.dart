@@ -1,7 +1,8 @@
 import 'message_model.dart';
 
 /// Represents a conversation session with a customer
-/// A session includes all the back-and-forth messages within a 90-second window
+/// A session includes all the back-and-forth messages until the agent's 3-min idle
+/// goodbye, the user tapping Stop, or the client's 5-min connectivity failsafe
 class Session {
   final String sessionId;
   final DateTime startTime;
@@ -39,7 +40,7 @@ class Session {
   }
 
   /// Gets how long it's been since the last customer interaction
-  /// Used to track if we're close to the 90-second timeout
+  /// Used to track if we're close to the idle timeout
   Duration getInactivityDuration() {
     final now = DateTime.now();
     return now.difference(lastActivityTime);
@@ -65,7 +66,7 @@ class Session {
   }
 
   /// Marks this session as ended/inactive
-  /// Called when the 90-second timer expires or customer walks away
+  /// Called when the session ends or the customer walks away
   Session end() {
     return Session(
       sessionId: sessionId,

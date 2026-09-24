@@ -16,6 +16,7 @@ from livekit import agents
 from livekit.agents import AgentServer, JobContext, JobProcess
 from livekit.plugins import silero
 
+from agent import rag_pipeline
 from agent.voice_agent import entrypoint
 
 # .env.local first (LiveKit CLI convention), then a plain .env as fallback.
@@ -32,8 +33,10 @@ server = AgentServer()
 
 
 def prewarm(proc: JobProcess) -> None:
-    """Load the Silero VAD weights once per worker process (shared across jobs)."""
+    """Load the Silero VAD weights and parse the menu embeddings once per worker
+    process (shared across jobs) so no customer turn pays for either."""
     proc.userdata["vad"] = silero.VAD.load()
+    rag_pipeline.warm_up()
 
 
 server.setup_fnc = prewarm

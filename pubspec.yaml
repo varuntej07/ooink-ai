@@ -74,8 +74,13 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
+  # Only the files the app loads at runtime. Store/marketing images and the
+  # menu_embeddings.json (used by the backend agent only) live in assets/ too
+  # but must not be bundled: listing the whole folder shipped ~14 MB of dead weight.
   assets:
-    - assets/
+    - assets/pig-bot-active.png
+    - assets/pig-bot-idle.png
+    - assets/Pig-Dancing.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -8,12 +8,15 @@ Reproduces the Flutter app's dual-prompt routing inside LiveKit's single-agent m
   below threshold we keep the persona prompt with no menu context.
 """
 
+import logging
 import time
 
 from livekit.agents import Agent, ChatContext, ChatMessage
 
 from .pig_prompt import PERSONA_SYSTEM_PROMPT, RAG_SYSTEM_PROMPT
 from .rag_pipeline import BELOW_THRESHOLD, find_relevant_context
+
+logger = logging.getLogger(__name__)
 
 
 class PigAgent(Agent):
@@ -31,7 +34,13 @@ class PigAgent(Agent):
             return
 
         # Route on the prior history (current turn passed separately), then record it.
-        context, score = await find_relevant_context(user_text, self._user_history)
+        # If this hook raises, LiveKit drops the turn without any reply, so a slow or
+        # failing embedding call degrades to the persona prompt instead of silence.
+        try:
+            context, score = await find_relevant_context(user_text, self._user_history)
+        except Exception:
+            logger.exception("RAG lookup failed; answering with the persona prompt")
+            context, score = BELOW_THRESHOLD, 0.0
         self._user_history.append(user_text)
         if len(self._user_history) > 10:
             self._user_history = self._user_history[-10:]

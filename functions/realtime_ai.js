@@ -4,6 +4,32 @@ const {initializeApp} = require('firebase-admin/app');
 // Initialize Firebase Admin
 initializeApp();
 
+// Vertex AI configuration (from firebase_options.dart / .firebaserc)
+const PROJECT_ID = 'ooinkai';
+const LOCATION = 'us-central1';
+const MODEL = 'text-embedding-004';
+const ENDPOINT = `projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${MODEL}`;
+
+// The Vertex client is created once per function instance and reused across
+// invocations: building it per call opened a new gRPC channel (plus an auth
+// token fetch) on every user turn. It is still required lazily so that
+// getLiveKitToken, which shares this module via index.js, does not pay the
+// @google-cloud/aiplatform load on its cold start.
+let vertex = null;
+function getVertex() {
+  if (!vertex) {
+    const aiplatform = require('@google-cloud/aiplatform');
+    const {PredictionServiceClient} = aiplatform.v1;
+    vertex = {
+      client: new PredictionServiceClient({
+        apiEndpoint: `${LOCATION}-aiplatform.googleapis.com`,
+      }),
+      helpers: aiplatform.helpers,
+    };
+  }
+  return vertex;
+}
+
 /**
  * Generates embeddings using Vertex AI text-embedding-004 model
 
@@ -44,29 +70,11 @@ const generateEmbedding = onCall(
     }
 
     try {
-      console.log('📦 Loading Vertex AI client...');
-      // Import Vertex AI client (dynamic import to reduce cold start time)
-      const aiplatform = require('@google-cloud/aiplatform');
-      const {PredictionServiceClient} = aiplatform.v1;
-      const {helpers} = aiplatform;
-      console.log('✅ Vertex AI client loaded');
-
-      // Configuration from your firebase_options.dart
-      const projectId = 'ooinkai';
-      const location = 'us-central1';
-      const model = 'text-embedding-004';
-      console.log(`⚙️  Config - Project: ${projectId}, Location: ${location}, Model: ${model}`);
-
-      // Initialize Vertex AI client with Application Default Credentials
-      // ADC automatically uses the Cloud Function's service account
-      const client = new PredictionServiceClient({
-        apiEndpoint: `${location}-aiplatform.googleapis.com`,
-      });
-      console.log(`🔗 Vertex AI client initialized with endpoint: ${location}-aiplatform.googleapis.com`);
-
-      // Build the endpoint path
-      const endpoint = `projects/${projectId}/locations/${location}/publishers/google/models/${model}`;
-      console.log(`📍 API Endpoint: ${endpoint}`);
+      // Reused per instance; ADC uses the Cloud Function's service account.
+      const {client, helpers} = getVertex();
+      const model = MODEL;
+      const endpoint = ENDPOINT;
+      console.log(`⚙️  Config - Project: ${PROJECT_ID}, Location: ${LOCATION}, Model: ${MODEL}`);
 
       // Prepare the prediction request using helpers.toValue() for protobuf format
       // IMPORTANT: task_type is REQUIRED for text-embedding-004 model

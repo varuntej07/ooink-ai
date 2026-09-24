@@ -246,6 +246,13 @@ class VoiceSessionService {
     if (!_audioLevels.isClosed) _audioLevels.add(const []);
     final session = _session;
     if (session == null) return;
+    // The last open turns are only finalized by _onSessionChanged on disconnect,
+    // which never fires once the listener is removed below. Flush them here so a
+    // user-ended session logs its final exchange just like an agent-ended one.
+    if (!_ended) {
+      _flushFinals(session.messages);
+      _ended = true;
+    }
     session.removeListener(_onSessionChanged);
     _session = null;
     try {

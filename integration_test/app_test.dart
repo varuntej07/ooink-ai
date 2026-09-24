@@ -17,7 +17,7 @@ void main() {
 
   group('Ooink App — startup and loading screen', () {
     /// Verifies the complete app initialization flow on a real device:
-    /// Firebase → embeddings → TTS → STT → home screen
+    /// Firebase → ViewModel wiring → home screen
     testWidgets('a: shows loading screen then transitions to home screen', (WidgetTester tester) async {
       app.main();
       await tester.pump(); // one frame so the loading screen renders
@@ -26,7 +26,7 @@ void main() {
       expect(find.text('Pig is waking up...'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-      // Wait for all services to initialize (embeddings load takes ~1-3s on device)
+      // Wait for all services to initialize (Firebase init on device)
       await tester.pumpAndSettle(const Duration(seconds: 15));
 
       // Loading screen must be gone after initialization
@@ -38,13 +38,14 @@ void main() {
           reason: 'Initialization must succeed — check Firebase credentials and network');
     });
 
-    /// Verifies the pig image and "Tap to Talk" button are visible when ready.
+    /// Verifies the voice wave button is visible and in its idle state when ready.
     testWidgets('b: home screen shows pig and action button after startup', (WidgetTester tester) async {
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 15));
 
-      // "Tap to Talk" button should be the CTA in idle state
-      expect(find.textContaining('Tap to Talk'), findsOneWidget);
+      // The icon-only wave button is the CTA; idle state carries the "talk" label.
+      expect(find.byKey(const Key('voice_wave_button')), findsOneWidget);
+      expect(find.bySemanticsLabel('Tap to talk to Pig'), findsOneWidget);
     });
 
     /// Manual coverage note — error screen with retry:
@@ -58,26 +59,21 @@ void main() {
   });
 
   group('Ooink App — conversation flow', () {
-    /// Taps the main button and verifies it leaves the idle "Tap to Talk" state.
-    /// Tapping connects to LiveKit, so the button shows "Connecting..." and then
-    /// "Stop Talking" once the room is up (needs the deployed token fn + agent).
-    testWidgets('d: tapping "Tap to Talk" starts connecting', (WidgetTester tester) async {
+    /// Taps the wave button and verifies it leaves the idle state. Tapping connects
+    /// to LiveKit, so the button's semantics label flips from "Tap to talk to Pig"
+    /// to "Tap to stop" (needs the deployed token fn + agent).
+    testWidgets('d: tapping the wave button starts connecting', (WidgetTester tester) async {
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 15));
 
-      final tapToTalkButton = find.textContaining('Tap to Talk');
-      if (tapToTalkButton.evaluate().isNotEmpty) {
-        await tester.tap(tapToTalkButton);
-        await tester.pump();
+      final waveButton = find.byKey(const Key('voice_wave_button'));
+      expect(waveButton, findsOneWidget);
+      await tester.tap(waveButton);
+      await tester.pump();
 
-        // Immediately after tapping, the session is connecting.
-        expect(
-          find.textContaining('Connecting').evaluate().isNotEmpty ||
-              find.textContaining('Stop').evaluate().isNotEmpty,
-          isTrue,
-          reason: 'Button must leave "Tap to Talk" once a session starts',
-        );
-      }
+      // Immediately after tapping, the session is connecting: the button now stops.
+      expect(find.bySemanticsLabel('Tap to stop'), findsOneWidget,
+          reason: 'Button must leave the idle state once a session starts');
     });
 
     /// Verifies that after a full question cycle the response text appears on screen.

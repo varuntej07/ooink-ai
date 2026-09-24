@@ -1,14 +1,14 @@
-"""Pig's system prompts — copied verbatim from lib/services/rag_service.dart.
+"""Pig's system prompts — the single source of truth (the former on-device copy in
+lib/services/rag_service.dart was removed in the voice migration).
 
-Two prompts mirror the Flutter app's dual-prompt routing:
+Two prompts drive the dual-prompt routing in pig_agent.py:
 - RAG_SYSTEM_PROMPT: used when the menu-similarity score is at/above threshold. The
   retrieved menu chunks are injected separately as context for that turn.
 - PERSONA_SYSTEM_PROMPT: used below threshold (greetings, jokes, small talk, deflection)
   with no menu context.
 
-Wording is intentionally identical to the Dart source of truth. Do not edit here without
-also updating rag_service.dart (and vice versa). The "Capitol Hill" / "Fremont" wording
-difference between the two is carried over from the original on purpose.
+The "Capitol Hill" / "Fremont" wording difference between the two is carried over from
+the original on purpose.
 """
 
 RAG_SYSTEM_PROMPT = """You are Pig, the fun and friendly AI bot answering user questions at Ooink Ramen Capitol Hill.

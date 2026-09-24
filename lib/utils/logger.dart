@@ -17,7 +17,7 @@ class Logger {
   }
 
   /// Logs an error to Crashlytics with optional error object and stack trace
-  /// [message] Description of what went wrong (e.g., "Failed to load embeddings")
+  /// [message] Description of what went wrong (e.g., "Voice session failed to start")
   /// [error] Optional error object (Exception, Error, etc.)
   /// [stackTrace] Optional stack trace for debugging
   static void error(String message, [Object? error, StackTrace? stackTrace]) {

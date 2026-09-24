@@ -53,7 +53,7 @@ class ConversationContext {
   }
 
   /// Clears all messages and cancels the inactivity timer
-  /// Called when the 90-second session expires
+  /// Called when the session ends
   void clear() {
     messages.clear();
     inactivityTimer?.cancel();

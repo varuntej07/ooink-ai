@@ -15,19 +15,6 @@ class SessionRepository {
   // In-memory cache - this is the primary source of truth during active conversations
   ConversationContext? _currentContext;
 
-  // System prompt that tells the AI how to behave
-  // This gets prepended to every conversation
-  static const String _systemPrompt =
-      "You are Pig, the funny friendly AI assistant at Ooink Ramen Fremont. "
-      "Your ONLY job is to help customers with questions about Ooink Ramen: "
-      "menu items, ingredients, prices, hours, location, and dining experience. "
-      "Answer using ONLY the context provided. Be warm, enthusiastic, and keep responses concise (2-3 sentences max). "
-      "STRICT RULE: If a question is NOT about Ooink Ramen or its menu, do NOT answer it. "
-      "Instead say exactly: 'I'm Pig, Ooink's menu assistant! I can only help with menu questions. "
-      "What would you like to know about our ramen? 🐷' "
-      "Topics you must REFUSE: math, coding, politics, other restaurants, personal advice, weather. "
-      "NEVER claim to be another AI. You are Pig, exclusively Ooink's assistant.";
-
   SessionRepository({required FirestoreService firestoreService})
       : _firestoreService = firestoreService;
 
@@ -45,13 +32,10 @@ class SessionRepository {
   Future<void> startSession() async {
     final sessionId = _uuid.v4(); // Generate unique ID
 
-    // Create in-memory context immediately (zero latency)
+    // Create in-memory context immediately (zero latency). The system prompt lives
+    // server-side in the LiveKit agent (backend/agent/pig_prompt.py), so the
+    // context holds only real user/assistant turns and messageCount is exact.
     _currentContext = ConversationContext.create(sessionId);
-
-    // Add system prompt as the first message
-    // This tells the AI how to behave throughout the conversation
-    final systemMessage = Message.system(_systemPrompt);
-    _currentContext!.addMessage(systemMessage);
 
     // Create session in Firestore asynchronously (fire-and-forget)
     // We don't await this so it doesn't slow down the conversation
@@ -117,7 +101,7 @@ class SessionRepository {
     return _currentContext!.toOpenAIMessages();
   }
 
-  /// Clears the current session (silent reset after 90-second timeout)
+  /// Clears the current session (after the agent's idle goodbye, Stop, or the failsafe)
   /// This ends the conversation and starts fresh for the next customer
   void clearSession() {
     if (_currentContext == null) return;
@@ -147,12 +131,11 @@ class SessionRepository {
   /// Gets the current conversation context (for debugging)
   ConversationContext? get currentContext => _currentContext;
 
-  /// Checks if the current session has any messages beyond the system prompt
+  /// Checks if the current session has any messages
   /// Returns false if it's a brand new session with no customer interaction yet
   bool get hasConversationStarted {
     if (_currentContext == null) return false;
-    // System prompt is always first, so check if there's more than 1 message
-    return _currentContext!.messageCount > 1;
+    return _currentContext!.messageCount > 0;
   }
 
   /// Submits anonymous feedback to Firestore, attaching the current session context as metadata

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../ViewModels/conversation_vm.dart';
 
 /// Full-screen feedback form that slides up from the home screen
-/// After submit: switches to a success view that auto-closes after 2.5s
+/// After submit: switches to a success view that auto-closes after 3.5s
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key});
 
@@ -153,7 +153,7 @@ class _FeedbackScreenState extends State<FeedbackScreen>
     );
   }
 
-  /// Success view — bounces in and auto-closes after 2.5s
+  /// Success view — bounces in and auto-closes after 3.5s
   Widget _buildSuccess() {
     return Center(
       child: FadeTransition(

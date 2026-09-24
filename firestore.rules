@@ -14,6 +14,12 @@ service cloud.firestore {
       }
     }
 
+    // Anonymous customer feedback written by FirestoreService.submitFeedback.
+    // Create-only: the kiosk never reads or edits feedback.
+    match /feedback/{feedbackId} {
+      allow create: if true;
+    }
+
     // Deny access to any other collections (for safety)
     match /{document=**} {
       allow read, write: if false;

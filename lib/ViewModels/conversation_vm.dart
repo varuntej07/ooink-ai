@@ -93,10 +93,10 @@ class ConversationViewModel extends ChangeNotifier {
     await _voiceService.startSession();
   }
 
-  /// Ends the voice conversation (user tapped Stop).
-  Future<void> endSession() async {
+  /// Ends the voice conversation (user tapped Stop, or the inactivity failsafe).
+  Future<void> endSession({String endedBy = 'user'}) async {
     await _voiceService.endSession();
-    _teardownSession(endedBy: 'user');
+    _teardownSession(endedBy: endedBy);
     _updateState(ConversationState.idle);
   }
 
@@ -219,8 +219,9 @@ class ConversationViewModel extends ChangeNotifier {
   }
 
   void _onInactivityFailsafe() {
-    Logger.session('Voice session inactivity failsafe (5 min) — ending');
-    endSession();
+    Logger.session(
+        'Voice session inactivity failsafe (${_sessionTimeout.inMinutes} min) — ending');
+    endSession(endedBy: 'timeout');
   }
 
   /// Directly triggers the inactivity failsafe — for unit tests.

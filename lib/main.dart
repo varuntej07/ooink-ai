@@ -60,7 +60,7 @@ class _OoinkAppState extends State<OoinkApp> {
   }
 
   /// Initialize all services and wait for them to be ready before showing the app
-  /// This prevents users from interacting before RAG service loads the knowledge base
+  /// This prevents users from interacting before the ViewModel and services are wired up
   Future<void> _initializeApp() async {
     try {
       // Initialize all services

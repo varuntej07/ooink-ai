@@ -239,7 +239,7 @@ class FakeConversationViewModel extends ConversationViewModel {
   Future<void> startSession() async {}
 
   @override
-  Future<void> endSession() async {}
+  Future<void> endSession({String endedBy = 'user'}) async {}
 
   @override
   Future<bool> submitFeedback(String text) async => true;

@@ -13,8 +13,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import AgentServer, JobContext, JobProcess
-from livekit.plugins import silero
+from livekit.agents import AgentServer, JobContext, JobProcess, inference
 
 from agent import rag_pipeline
 from agent.voice_agent import entrypoint
@@ -35,7 +34,7 @@ server = AgentServer()
 def prewarm(proc: JobProcess) -> None:
     """Load the Silero VAD weights and parse the menu embeddings once per worker
     process (shared across jobs) so no customer turn pays for either."""
-    proc.userdata["vad"] = silero.VAD.load()
+    proc.userdata["vad"] = inference.VAD(model="silero")
     rag_pipeline.warm_up()
 
 

@@ -63,6 +63,36 @@ def _load_chunks() -> tuple[list[str], np.ndarray]:
     return texts, matrix / norms
 
 
+# Preemptive generation can run the LLM node several times for one customer turn
+# (once per transcript update). Share one embed call per distinct query text so
+# those retries do not each pay a round trip. Bounded; failed calls are evicted.
+_EMBED_CACHE_MAX = 64
+_embed_tasks: dict[str, asyncio.Task[list[float]]] = {}
+
+
+async def warm_embedding() -> None:
+    """Fire one throwaway embed call at session start so a cold Cloud Function
+    instance is awake by the customer's first menu question. Never raises."""
+    try:
+        await generate_embedding("ramen")
+    except Exception:
+        pass
+
+
+async def _cached_embedding(text: str) -> list[float]:
+    task = _embed_tasks.get(text)
+    if task is None or (task.done() and (task.cancelled() or task.exception())):
+        task = asyncio.ensure_future(generate_embedding(text))
+        # Mark the error retrieved even if every caller was cancelled before it landed.
+        task.add_done_callback(lambda t: t.cancelled() or t.exception())
+        _embed_tasks[text] = task
+        while len(_embed_tasks) > _EMBED_CACHE_MAX:
+            _embed_tasks.pop(next(iter(_embed_tasks)))
+    # Shield: a discarded preemptive attempt cancels its caller, but the shared call
+    # should keep running for the attempt that replaces it.
+    return await asyncio.shield(task)
+
+
 async def generate_embedding(text: str) -> list[float]:
     """Call the Firebase callable function. Response shape: {"result": {"embedding": [...]}}."""
     resp = await _client().post(
@@ -94,7 +124,7 @@ async def find_relevant_context(user_message: str, history: list[str]) -> tuple[
     recent = history[-2:] if len(history) >= 2 else history
     enriched = "\n".join([*recent, user_message]) if recent else user_message
 
-    query_embedding = await generate_embedding(enriched)
+    query_embedding = await _cached_embedding(enriched)
     loop = asyncio.get_running_loop()
     top_idx, top_score = await loop.run_in_executor(None, _rank, query_embedding)
 

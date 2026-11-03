@@ -79,6 +79,9 @@ MENU_KEYTERMS = [
     "Ooink", "Kotteri", "Mala Kotteri", "Mala", "Shoyu", "Shio", "Mapo Tofu", "Gyoza",
     "Ayam Goreng", "Miso", "Dashi", "Shanghai", "tare", "ramen", "Sichuan",
     "Capitol Hill", "Fremont", "Chef Ooi",
+    # Allergen words: a misheard "sesame" or "peanut" would slip past the allergen guard.
+    "allergy", "allergic", "peanut", "sesame", "gluten", "dairy", "shellfish", "celiac",
+    "tree nuts",
 ]
 
 

@@ -335,7 +335,7 @@
           "flavor_profile": "Miso umami",
           "spice_level": "No-spicy",
           "dietary_options": [],
-          "allergens": ["soy", "wheat", "diary"],
+          "allergens": ["soy", "wheat", "dairy"],
           "toppings": ["scallion", "wooded mushrooms", "corn butter", "tofu skin", "bakchoi", "seaweed", "corn"],
           "doesn't have": ["egg", "pork"],
           "customizations": [
@@ -508,7 +508,7 @@
           ]
         },
         {
-          "id": "side_003",
+          "id": "side_004",
           "name": "Garlic Peanut Chili Oil",
           "price": "$2.50",
           "available_retail": true,

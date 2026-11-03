@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import AgentServer, JobContext, JobProcess, inference
 
-from agent import rag_pipeline
+from agent import allergen_facts, rag_pipeline
 from agent.voice_agent import entrypoint
 
 # .env.local first (LiveKit CLI convention), then a plain .env as fallback.
@@ -33,9 +33,11 @@ server = AgentServer()
 
 def prewarm(proc: JobProcess) -> None:
     """Load the Silero VAD weights and parse the menu embeddings once per worker
-    process (shared across jobs) so no customer turn pays for either."""
+    process (shared across jobs) so no customer turn pays for either. Allergen facts
+    load here too: bad allergen data fails the worker at start, not mid-conversation."""
     proc.userdata["vad"] = inference.VAD(model="silero")
     rag_pipeline.warm_up()
+    allergen_facts.load_facts()
 
 
 server.setup_fnc = prewarm

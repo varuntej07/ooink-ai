@@ -7,8 +7,9 @@ customer-facing pieces of a turn are known:
     turn_latency_ms = end_of_utterance_delay + llm ttft + tts ttfb
 
 That sum is the time between the customer going quiet and the Pig starting to speak,
-which is the number to compute p50/p95/p99 over. Fields go through `extra=` so LiveKit
-Cloud's JSON log formatter surfaces them as top-level keys.
+which is the number to compute p50/p95/p99 over. Allergen template replies make no LLM
+call; they are logged with `path: "no_llm"` and `llm_ttft_ms: None`. Fields go through
+`extra=` so LiveKit Cloud's JSON log formatter surfaces them as top-level keys.
 """
 
 import logging
@@ -50,6 +51,7 @@ def attach_metrics(session: AgentSession, ctx: JobContext) -> None:
         fields: dict[str, object]
         speech_id = getattr(m, "speech_id", None)
         if isinstance(m, metrics.EOUMetrics):
+            _flush_no_llm_turns(turns)   # earlier turns are finished once a new one ends
             fields = {
                 "kind": "eou",
                 "end_of_utterance_delay_ms": _ms(m.end_of_utterance_delay),
@@ -109,10 +111,32 @@ def attach_metrics(session: AgentSession, ctx: JobContext) -> None:
             del turns[speech_id]
 
     async def _log_usage() -> None:
+        _flush_no_llm_turns(turns)
         summary = usage.get_summary()
         logger.info("usage_summary", extra={"usage": summary.__dict__})
 
     ctx.add_shutdown_callback(_log_usage)
+
+
+def _flush_no_llm_turns(turns: dict[str, _TurnParts]) -> None:
+    """Log turns answered without the LLM (allergen template replies), which never get an
+    LLM metric. Called when the next turn ends or the session closes; by then an LLM
+    turn's metric has always arrived, so a turn still missing one had no LLM call."""
+    for speech_id, part in list(turns.items()):
+        if part.eou_delay_ms is None or part.tts_ttfb_ms is None or part.llm_ttft_ms is not None:
+            continue
+        logger.info(
+            "turn_latency",
+            extra={
+                "speech_id": speech_id,
+                "turn_latency_ms": part.eou_delay_ms + part.tts_ttfb_ms,
+                "eou_delay_ms": part.eou_delay_ms,
+                "llm_ttft_ms": None,
+                "tts_ttfb_ms": part.tts_ttfb_ms,
+                "path": "no_llm",
+            },
+        )
+        del turns[speech_id]
 
 
 def _part(turns: dict[str, _TurnParts], speech_id: str | None) -> _TurnParts:

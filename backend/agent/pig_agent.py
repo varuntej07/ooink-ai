@@ -11,15 +11,21 @@ the customer is still finishing their sentence, and only keeps it if the hook le
 chat context unchanged (livekit-agents 1.8.3, agent_activity.py "using preemptive
 generation"). Routing inside `llm_node` runs the embed call inside that head start and
 never touches the persistent context, so the speculative reply survives.
+
+Allergen questions skip RAG and the LLM and are answered from the menu data; every LLM
+reply passes through the allergen pre-speech check (allergen_guard.py). Set
+ALLERGEN_GUARD=off to disable both.
 """
 
 import logging
+import os
 import time
 from collections.abc import AsyncIterable
 
 import httpx
 from livekit.agents import Agent, ChatContext, ChatMessage, FlushSentinel, ModelSettings, llm
 
+from . import allergen_guard
 from .pig_prompt import PERSONA_SYSTEM_PROMPT, RAG_SYSTEM_PROMPT
 from .rag_pipeline import BELOW_THRESHOLD, find_relevant_context
 from .speech_text import sanitize_stream
@@ -56,6 +62,7 @@ class PigAgent(Agent):
         tools: list[llm.Tool],
         model_settings: ModelSettings,
     ) -> AsyncIterable[llm.ChatChunk | str | FlushSentinel]:
+        guard_on = os.getenv("ALLERGEN_GUARD", "on").lower() != "off"   # kill switch
         user_texts = [
             text
             for item in chat_ctx.items
@@ -63,8 +70,23 @@ class PigAgent(Agent):
             and (text := (item.text_content or "").strip())
         ]
         if not user_texts:
-            return Agent.default.llm_node(self, chat_ctx, tools, model_settings)
+            return self._guarded(chat_ctx, tools, model_settings, allergen_guard.EMPTY_SIGNAL, guard_on)
         user_text, history = user_texts[-1], user_texts[-1 - _HISTORY_TURNS:-1]
+
+        # Allergen question: answer from the menu data only. No RAG call, no LLM call.
+        signal = allergen_guard.detect(user_text, user_texts[:-1])
+        if guard_on and signal.question:
+            last_assistant = next(
+                (
+                    item.text_content or ""
+                    for item in reversed(chat_ctx.items)
+                    if item.type == "message" and item.role == "assistant"
+                ),
+                "",
+            )
+            dishes = allergen_guard.dishes_for(user_text, user_texts[:-1], last_assistant)
+            reply = allergen_guard.compose_reply(signal, dishes, variant=len(user_texts))
+            return allergen_guard.speak_reply(reply, signal, dishes)
 
         # If the lookup raises, degrade to the persona prompt instead of going silent.
         started = time.perf_counter()
@@ -89,7 +111,7 @@ class PigAgent(Agent):
 
         if context == BELOW_THRESHOLD:
             # Greetings / small talk / off-topic: persona prompt, no menu context.
-            return Agent.default.llm_node(self, chat_ctx, tools, model_settings)
+            return self._guarded(chat_ctx, tools, model_settings, signal, guard_on)
 
         # Menu question: RAG rules + the retrieved chunks, for this reply only.
         # ChatContext.copy() is shallow, so replace items rather than editing them.
@@ -114,7 +136,38 @@ class PigAgent(Agent):
             i for i, item in enumerate(ctx.items) if item.type == "message" and item.role == "user"
         )
         ctx.items.insert(last_user, reference)
-        return Agent.default.llm_node(self, ctx, tools, model_settings)
+        return self._guarded(ctx, tools, model_settings, signal, guard_on)
+
+    def _guarded(
+        self,
+        chat_ctx: llm.ChatContext,
+        tools: list[llm.Tool],
+        model_settings: ModelSettings,
+        signal: allergen_guard.AllergenSignal,
+        guard_on: bool,
+    ) -> AsyncIterable[llm.ChatChunk | str | FlushSentinel]:
+        """The LLM reply, passed through the allergen pre-speech check. When the customer
+        mentioned an allergy earlier, the model is also told which, for this reply only."""
+        if not guard_on:
+            return Agent.default.llm_node(self, chat_ctx, tools, model_settings)
+        if signal.session:
+            chat_ctx = chat_ctx.copy()
+            note = llm.ChatMessage(
+                role="system",
+                content=[
+                    "The customer mentioned an allergy to: "
+                    + ", ".join(sorted(signal.session))
+                    + ". Never say or imply that any dish is safe for them or free of it. "
+                    "Only say what the menu lists."
+                ],
+            )
+            last_user = max(
+                (i for i, item in enumerate(chat_ctx.items) if item.type == "message" and item.role == "user"),
+                default=len(chat_ctx.items),
+            )
+            chat_ctx.items.insert(last_user, note)
+        stream = Agent.default.llm_node(self, chat_ctx, tools, model_settings)
+        return allergen_guard.guard_stream(stream, signal)
 
     def tts_node(self, text: AsyncIterable[str], model_settings: ModelSettings):
         # Strip markdown/emoji and say prices as words before the voice reads them.
